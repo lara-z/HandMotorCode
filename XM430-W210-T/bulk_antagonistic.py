@@ -64,8 +64,19 @@ LEN_PRO_PRESENT_POSITION    = 4
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
-DXL1_ID                     = 4                 # Dynamixel#1 ID : 1
-DXL2_ID                     = 6                 # Dynamixel#1 ID : 2
+DXLAN_ID                    = int(input("What is the ID of the antagonist motor?"))
+DXLAG_ID                    = int(input("What is the ID of the agonist motor?"))
+DXL_TOTAL                   = list(range(1,int(input("How many motors are there?"))+1))
+DXL_MOVE                    = [DXLAN_ID, DXLAG_ID]
+DXL_STATIC                  = DXL_TOTAL.copy()
+DXL_STATIC.remmove(DXLAN_ID)
+DXL_STATIC.remmove(DXLAG_ID)
+# DXL1_ID                     = 4                 # Dynamixel#1 ID : 1
+# DXL2_ID                     = 6                 # Dynamixel#1 ID : 2
+# DXL3_ID                     = 4                 # Dynamixel#1 ID : 3
+# DXL4_ID                     = 6                 # Dynamixel#1 ID : 4
+# DXL5_ID                     = 4                 # Dynamixel#1 ID : 5
+# DXL6_ID                     = 6                 # Dynamixel#1 ID : 6
 BAUDRATE                    = 1000000           # Dynamixel default baudrate : 57600
 DEVICENAME                  = 'COM3'            # Check which port is being used on your controller
 
@@ -114,55 +125,40 @@ else:
     quit()
 
 # Set operating mode to extended position control mode in both motors
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL1_ID, ADDR_OPERATING_MODE, EXT_POSITION_CONTROL_MODE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-else:
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL2_ID, ADDR_OPERATING_MODE, EXT_POSITION_CONTROL_MODE)
+for motor_id in DXL_TOTAL:
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_OPERATING_MODE, EXT_POSITION_CONTROL_MODE)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
     else:
-        print("Operating mode changed to extended position control mode.")
+        print("Operating mode changed to extended position control mode for Dynamixel#%d" % motor_id)
 
-# Enable Dynamixel#1 Torque
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-else:
-    print("Dynamixel#%d has been successfully connected" % DXL1_ID)
+# Enable Torque
+for motor_id in DXL_TOTAL:
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    else:
+        print("Dynamixel#%d has been successfully connected" % motor_id)
 
-# Enable Dynamixel#2 Torque
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL2_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-else:
-    print("Dynamixel#%d has been successfully connected" % DXL2_ID)
-
-# Add parameter storage for Dynamixel#1 present position
-dxl_addparam_result = groupBulkRead.addParam(DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
-if dxl_addparam_result != True:
-    print("[ID:%03d] groupBulkRead addparam failed" % DXL1_ID)
-    quit()
-
-# Add parameter storage for Dynamixel#2 present position
-dxl_addparam_result = groupBulkRead.addParam(DXL2_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
-if dxl_addparam_result != True:
-    print("[ID:%03d] groupBulkRead addparam failed" % DXL2_ID)
-    quit()
+# Add parameter storage for present position
+for motor_id in DXL_TOTAL:
+    dxl_addparam_result = groupBulkRead.addParam(motor_id, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
+    if dxl_addparam_result != True:
+        print("[ID:%03d] groupBulkRead addparam failed" % motor_id)
+        quit()
 
 # set initial goal position to current position
-dxl1_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL1_ID, ADDR_PRO_PRESENT_POSITION)
-dxl1_goal_position = [dxl1_present_position, dxl1_present_position]
-dxl2_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL2_ID, ADDR_PRO_PRESENT_POSITION)
-dxl2_goal_position = [dxl2_present_position, dxl2_present_position]
+dxl_present_position = [0]*DXL_TOTAL[-1]
+dx_comm_result = [0]*DXL_TOTAL[-1]
+dx_error = [0]*DXL_TOTAL[-1]
+dxl_goal_position =  [0]*DXL_TOTAL[-1]
+for motor_id in DXL_TOTAL:
+    dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+    dxl_goal_position[motor_id-1] = [dxl_present_position[motor_id-1], dxl_present_position[motor_id-1]]
 
 print("*********")
 
@@ -179,28 +175,24 @@ while 1:
         direction = 0
 
     # write new goal position
-    new_goal_1  = (dxl1_goal_position[1] + direction*ROTATE_AMOUNT)
-    dxl1_goal_position = [dxl1_goal_position[1], new_goal_1]
-    new_goal_2  = (dxl2_goal_position[1] + direction*ROTATE_AMOUNT)
-    dxl2_goal_position = [dxl2_goal_position[1], new_goal_2]
+    for motor_id in DXL_MOVE:
+        new_goal_1  = (dxl_goal_position[motor_id-1][1] + direction*ROTATE_AMOUNT)
+        dxl_goal_position[motor_id-1] = [dxl1_goal_position[motor_id-1][1], new_goal_1]
+        new_goal_2  = (dxl_goal_position[motor_id-1][1] - direction*ROTATE_AMOUNT)
+        dxl_goal_positio[motor_id-1]n = [dxl_goal_position[motor_id-1][1], new_goal_2]
 
-    # Allocate goal position value into byte array
-    param_goal_position_1 = [DXL_LOBYTE(DXL_LOWORD(dxl1_goal_position[index])), DXL_HIBYTE(DXL_LOWORD(dxl1_goal_position[index])), DXL_LOBYTE(DXL_HIWORD(dxl1_goal_position[index])), DXL_HIBYTE(DXL_HIWORD(dxl1_goal_position[index]))]
-    param_goal_position_2 = [DXL_LOBYTE(DXL_LOWORD(dxl2_goal_position[index])), DXL_HIBYTE(DXL_LOWORD(dxl2_goal_position[index])), DXL_LOBYTE(DXL_HIWORD(dxl2_goal_position[index])), DXL_HIBYTE(DXL_HIWORD(dxl2_goal_position[index]))]
+    param_goal_position = [0]*DXL_TOTAL[-1]
+    for motor_id in DXL_TOTAL:
+        # Allocate goal position value into byte array
+        param_goal_position[motor_id-1] = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[motor_id-1][1])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[motor_id-1][1])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[motor_id-1][1])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[motor_id-1][1]))]
 
-    # Add Dynamixel#1 goal position value to the Bulkwrite parameter storage
-    dxl_addparam_result = groupBulkWrite.addParam(DXL1_ID, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, param_goal_position_1)
-    if dxl_addparam_result != True:
-        print("[ID:%03d] groupBulkWrite addparam failed" % DXL1_ID)
-        quit()
+        # Add Dynamixel#1 goal position value to the Bulkwrite parameter storage
+        dxl_addparam_result = groupBulkWrite.addParam(motor_id, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, param_goal_position_1)
+        if dxl_addparam_result != True:
+            print("[ID:%03d] groupBulkWrite addparam failed" % motor_id)
+            quit()
 
-    # Add Dynamixel#2 goal position value to the Bulkwrite parameter storage
-    dxl_addparam_result = groupBulkWrite.addParam(DXL2_ID, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, param_goal_position_2)
-    if dxl_addparam_result != True:
-        print("[ID:%03d] groupBulkWrite addparam failed" % DXL2_ID)
-        quit()
-
-    # Bulkwrite goal position and LED value
+    # Bulkwrite goal position
     dxl_comm_result = groupBulkWrite.txPacket()
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
@@ -214,46 +206,34 @@ while 1:
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
 
-        # Check if groupbulkread data of Dynamixel#1 is available
-        dxl_getdata_result = groupBulkRead.isAvailable(DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
-        if dxl_getdata_result != True:
-            print("[ID:%03d] groupBulkRead getdata failed" % DXL1_ID)
-            quit()
-
-        # Check if groupbulkread data of Dynamixel#2 is available
-        dxl_getdata_result = groupBulkRead.isAvailable(DXL2_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
-        if dxl_getdata_result != True:
-            print("[ID:%03d] groupBulkRead getdata failed" % DXL2_ID)
-            quit()
+        # Check if groupbulkread data is available
+        for motor_id in DXL_TOTAL:
+            dxl_getdata_result = groupBulkRead.isAvailable(motor_id, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
+            if dxl_getdata_result != True:
+                print("[ID:%03d] groupBulkRead getdata failed" % motor_id)
+                quit()
 
         # Get present position value
-        dxl1_present_position = groupBulkRead.getData(DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
-        dxl2_present_position = groupBulkRead.getData(DXL2_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
+        for motor_id in DXL_TOTAL:
+            dxl_present_position[motor_id-1] = groupBulkRead.getData(motor_id, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
 
         # print("[ID:%03d] Present Position : %d \t [ID:%03d] Present Position : %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_present_position))
 
-        if not (abs(dxl1_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
-            break
-        if not (abs(dxl2_goal_position[index] - dxl2_present_position) > DXL_MOVING_STATUS_THRESHOLD):
-            break
+        for motor_id in DXL_TOTAL:
+            if not (abs(dxl_goal_position[motor_id-1][1] - dxl_present_position[motor_id-1]) > DXL_MOVING_STATUS_THRESHOLD):
+                break
 
 
 # Clear bulkread parameter storage
 groupBulkRead.clearParam()
 
-# Disable Dynamixel#1 Torque
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-# Disable Dynamixel#2 Torque
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL2_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
+# Disable Torque
+for motor_id in DXL_TOTAL:
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
 
 
 print("torques disabled")
