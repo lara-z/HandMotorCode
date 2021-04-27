@@ -1,5 +1,6 @@
 # winds or unwinds four motors simultaneously
 # motor id selection and (un)wind direction determined as user input in command prompt
+# useful when mounting finger on hand and winding the cable on the plate of four motors
 
 ################################################################################
 # Copyright 2017 ROBOTIS CO., LTD.
