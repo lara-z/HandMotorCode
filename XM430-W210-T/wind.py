@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# winds a single motor
+# motor id specified by user as command prompt input
 
 ################################################################################
 # Copyright 2017 ROBOTIS CO., LTD.
@@ -52,7 +52,7 @@ ADDR_PRO_PRESENT_POSITION   = 132
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
-DXL_ID                      = int(input("What is the ID of this dynamixel motor?"))
+DXL_ID                      = int(input("What is the ID of this dynamixel motor?  "))
 BAUDRATE                    = 1000000           # Dynamixel default baudrate : 57600
 DEVICENAME                  = 'COM3'            # Check which port is being used on your controller
 OPERATION_MODE              = 0x02
@@ -120,9 +120,9 @@ while 1:
     if getch() == chr(0x1b):
         break
     elif keyboard.is_pressed('w'):
-        direction = -1
-    elif keyboard.is_pressed('u'):
         direction = 1
+    elif keyboard.is_pressed('u'):
+        direction = -1
     else:
         direction = 0
 

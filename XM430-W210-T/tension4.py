@@ -1,6 +1,5 @@
-# can wind, unwind, move up, or move down any number of agonist/antagonist num_pairs
-# wind, unwind, move up, or move down based on user input specified in the command prompt
-# agonist/antagonist pairs specified in command prompt
+# winds or unwinds four motors simultaneously
+# motor id selection and (un)wind direction determined as user input in command prompt
 
 ################################################################################
 # Copyright 2017 ROBOTIS CO., LTD.
@@ -67,11 +66,12 @@ LEN_PRO_PRESENT_POSITION    = 4
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
+DXLAN1_ID                    = int(input("What is the ID of the antagonist motor?"))
+DXLAG1_ID                    = int(input("What is the ID of the agonist motor?"))
+DXLAN2_ID                    = int(input("What is the ID of the antagonist motor?"))
+DXLAG2_ID                    = int(input("What is the ID of the agonist motor?"))
 DXL_TOTAL                   = list(range(1,int(input("How many motors are there?"))+1))
-num_pairs                   = int(input("How many agonist, antagonist pairs do you want to move simultaneously?  "))
-DXLAG_ID                    = list(map(int,input("Enter the agonist motor numbers (separated by a space):  ").strip().split()))[:num_pairs]
-DXLAN_ID                    = list(map(int,input("Enter the antagonist motor numbers (in the same order, separated by a space):  ").strip().split()))[:num_pairs]
-DXL_MOVE                    = [x for y in zip(DXLAG_ID, DXLAN_ID) for x in y]
+DXL_MOVE                    = [DXLAN1_ID, DXLAG1_ID, DXLAN2_ID, DXLAG2_ID]
 
 BAUDRATE                    = 1000000           # Dynamixel default baudrate : 57600
 DEVICENAME                  = 'COM3'            # Check which port is being used on your controller
@@ -176,19 +176,20 @@ while 1:
     if keypress == b'\x1b':
         break
     elif keypress == b'u':
-        direction = [1,-1]*num_pairs
+        direction = [-1,1,-1,1]
     elif keypress == b'd':
-        direction = [-1,1]*num_pairs
+        direction = [1,-1,1,-1]
     elif keypress == b'b':
-        direction = [1,1]*num_pairs
+        direction = [1,1,1,1]
     elif keypress == b'r':
-        direction = [-1,-1]*num_pairs
+        direction = [-1,-1,-1,-1]
     elif keypress == b'c':
-        num_pairs = int(input("How many agonist, antagonist pairs do you want to move simultaneously?  "))
-        DXLAG_ID  = list(map(int,input("Enter the agonist motor numbers (separated by a space):  ").strip().split()))[:num_pairs]
-        DXLAN_ID  = list(map(int,input("Enter the antagonist motor numbers (in the same order, separated by a space):  ").strip().split()))[:num_pairs]
-        DXL_MOVE  = [x for y in zip(DXLAG_ID, DXLAN_ID) for x in y]
-        direction = [1,1]*num_pairs
+        DXLAN1_ID                    = int(input("What is the ID of the antagonist motor?"))
+        DXLAG1_ID                    = int(input("What is the ID of the agonist motor?"))
+        DXLAN2_ID                    = int(input("What is the ID of the antagonist motor?"))
+        DXLAG2_ID                    = int(input("What is the ID of the agonist motor?"))
+        DXL_MOVE                     = [DXLAN1_ID, DXLAG1_ID, DXLAN2_ID, DXLAG2_ID]
+        direction = [1,1,1,1]
         print('Motors changed')
     else:
         print("Invalid key")

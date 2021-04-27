@@ -1,6 +1,7 @@
-# can wind, unwind, move up, or move down any number of agonist/antagonist num_pairs
-# wind, unwind, move up, or move down based on user input specified in the command prompt
-# agonist/antagonist pairs specified in command prompt
+# can wind, unwind, move up, or move down antagonistic tendons
+# can only do one pair of antagonist tendons at a time
+# wind, unwind, move up, or move down action specified as user input in command prompt
+# motor choice specified as user input in command prompt
 
 ################################################################################
 # Copyright 2017 ROBOTIS CO., LTD.
@@ -67,12 +68,19 @@ LEN_PRO_PRESENT_POSITION    = 4
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
+DXLAN_ID                    = int(input("What is the ID of the antagonist motor?"))
+DXLAG_ID                    = int(input("What is the ID of the agonist motor?"))
 DXL_TOTAL                   = list(range(1,int(input("How many motors are there?"))+1))
-num_pairs                   = int(input("How many agonist, antagonist pairs do you want to move simultaneously?  "))
-DXLAG_ID                    = list(map(int,input("Enter the agonist motor numbers (separated by a space):  ").strip().split()))[:num_pairs]
-DXLAN_ID                    = list(map(int,input("Enter the antagonist motor numbers (in the same order, separated by a space):  ").strip().split()))[:num_pairs]
-DXL_MOVE                    = [x for y in zip(DXLAG_ID, DXLAN_ID) for x in y]
-
+DXL_MOVE                    = [DXLAN_ID, DXLAG_ID]
+DXL_STATIC                  = DXL_TOTAL.copy()
+DXL_STATIC.remove(DXLAN_ID)
+DXL_STATIC.remove(DXLAG_ID)
+# DXL1_ID                     = 4                 # Dynamixel#1 ID : 1
+# DXL2_ID                     = 6                 # Dynamixel#1 ID : 2
+# DXL3_ID                     = 4                 # Dynamixel#1 ID : 3
+# DXL4_ID                     = 6                 # Dynamixel#1 ID : 4
+# DXL5_ID                     = 4                 # Dynamixel#1 ID : 5
+# DXL6_ID                     = 6                 # Dynamixel#1 ID : 6
 BAUDRATE                    = 1000000           # Dynamixel default baudrate : 57600
 DEVICENAME                  = 'COM3'            # Check which port is being used on your controller
 
@@ -165,8 +173,8 @@ for motor_id in DXL_TOTAL:
 
 print("*********")
 
-print('Press "u" to move the finger(s) up, "d" to move the finger(s) down')
-print('Press "b" to pull all moving motors, "r" to release all moving motors')
+print('Press "u" to move the finger up, "d" to move the finger down')
+print('Press "b" to pull both motors, "r" to release both motors')
 print('Press "c" to change which motors you manipulate')
 print('Press ESC to exit')
 
@@ -176,19 +184,18 @@ while 1:
     if keypress == b'\x1b':
         break
     elif keypress == b'u':
-        direction = [1,-1]*num_pairs
+        direction = [-1,1]
     elif keypress == b'd':
-        direction = [-1,1]*num_pairs
+        direction = [1,-1]
     elif keypress == b'b':
-        direction = [1,1]*num_pairs
+        direction = [1,1]
     elif keypress == b'r':
-        direction = [-1,-1]*num_pairs
+        direction = [-1,-1]
     elif keypress == b'c':
-        num_pairs = int(input("How many agonist, antagonist pairs do you want to move simultaneously?  "))
-        DXLAG_ID  = list(map(int,input("Enter the agonist motor numbers (separated by a space):  ").strip().split()))[:num_pairs]
-        DXLAN_ID  = list(map(int,input("Enter the antagonist motor numbers (in the same order, separated by a space):  ").strip().split()))[:num_pairs]
-        DXL_MOVE  = [x for y in zip(DXLAG_ID, DXLAN_ID) for x in y]
-        direction = [1,1]*num_pairs
+        DXLAN_ID                    = int(input("What is the ID of the antagonist motor?"))
+        DXLAG_ID                    = int(input("What is the ID of the agonist motor?"))
+        DXL_MOVE                    = [DXLAN_ID, DXLAG_ID]
+        direction = [1,1]
         print('Motors changed')
     else:
         print("Invalid key")
