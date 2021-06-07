@@ -1,0 +1,166 @@
+// the values from "start move" are taken in a loop that loops until the motor has arrived at its desired position
+// the values from "upon finishing motion" are taken outside of that loop once it arrives at its desired position
+// each move is a desired ~8 degree movement
+// I have manually gone in and peppered the readings with comments to show what's happening when
+// finger starts with cable completely slack
+[ID:002] PresCurrent:000, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:000, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:65519, GoalCurrent:1193
+[ID:002] PresCurrent:65517, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:65530, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:65485, GoalCurrent:1193
+[ID:002] PresCurrent:65525, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:000, GoalCurrent:1193
+// cable is no longer slack
+start move
+[ID:002] PresCurrent:65474, GoalCurrent:1193
+[ID:002] PresCurrent:012, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:027, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:004, GoalCurrent:1193
+[ID:002] PresCurrent:077, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:103, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:080, GoalCurrent:1193
+[ID:002] PresCurrent:100, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:118, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:044, GoalCurrent:1193
+[ID:002] PresCurrent:102, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:119, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:016, GoalCurrent:1193
+[ID:002] PresCurrent:079, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:100, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:083, GoalCurrent:1193
+[ID:002] PresCurrent:066, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:072, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:072, GoalCurrent:1193
+[ID:002] PresCurrent:039, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:056, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:044, GoalCurrent:1193
+[ID:002] PresCurrent:023, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:054, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:005, GoalCurrent:1193
+[ID:002] PresCurrent:087, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:101, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:116, GoalCurrent:1193
+[ID:002] PresCurrent:246, GoalCurrent:1193
+[ID:002] PresCurrent:249, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:249, GoalCurrent:1193
+// I put my hand in so the finger cannot achieve its desired position and it fights to do so (until I remove my hand)
+start move
+[ID:002] PresCurrent:285, GoalCurrent:1193
+[ID:002] PresCurrent:393, GoalCurrent:1193
+[ID:002] PresCurrent:406, GoalCurrent:1193
+[ID:002] PresCurrent:405, GoalCurrent:1193
+[ID:002] PresCurrent:405, GoalCurrent:1193
+[ID:002] PresCurrent:404, GoalCurrent:1193
+[ID:002] PresCurrent:403, GoalCurrent:1193
+[ID:002] PresCurrent:403, GoalCurrent:1193
+[ID:002] PresCurrent:402, GoalCurrent:1193
+[ID:002] PresCurrent:402, GoalCurrent:1193
+[ID:002] PresCurrent:401, GoalCurrent:1193
+[ID:002] PresCurrent:401, GoalCurrent:1193
+[ID:002] PresCurrent:400, GoalCurrent:1193
+[ID:002] PresCurrent:400, GoalCurrent:1193
+[ID:002] PresCurrent:399, GoalCurrent:1193
+[ID:002] PresCurrent:399, GoalCurrent:1193
+[ID:002] PresCurrent:398, GoalCurrent:1193
+[ID:002] PresCurrent:397, GoalCurrent:1193
+[ID:002] PresCurrent:397, GoalCurrent:1193
+[ID:002] PresCurrent:397, GoalCurrent:1193
+[ID:002] PresCurrent:396, GoalCurrent:1193
+[ID:002] PresCurrent:395, GoalCurrent:1193
+[ID:002] PresCurrent:395, GoalCurrent:1193
+[ID:002] PresCurrent:394, GoalCurrent:1193
+[ID:002] PresCurrent:394, GoalCurrent:1193
+[ID:002] PresCurrent:393, GoalCurrent:1193
+[ID:002] PresCurrent:393, GoalCurrent:1193
+[ID:002] PresCurrent:391, GoalCurrent:1193
+[ID:002] PresCurrent:392, GoalCurrent:1193
+[ID:002] PresCurrent:392, GoalCurrent:1193
+[ID:002] PresCurrent:391, GoalCurrent:1193
+[ID:002] PresCurrent:391, GoalCurrent:1193
+[ID:002] PresCurrent:391, GoalCurrent:1193
+[ID:002] PresCurrent:390, GoalCurrent:1193
+[ID:002] PresCurrent:390, GoalCurrent:1193
+[ID:002] PresCurrent:389, GoalCurrent:1193
+[ID:002] PresCurrent:388, GoalCurrent:1193
+[ID:002] PresCurrent:389, GoalCurrent:1193
+[ID:002] PresCurrent:388, GoalCurrent:1193
+[ID:002] PresCurrent:388, GoalCurrent:1193
+[ID:002] PresCurrent:387, GoalCurrent:1193
+[ID:002] PresCurrent:387, GoalCurrent:1193
+[ID:002] PresCurrent:386, GoalCurrent:1193
+[ID:002] PresCurrent:386, GoalCurrent:1193
+[ID:002] PresCurrent:386, GoalCurrent:1193
+[ID:002] PresCurrent:382, GoalCurrent:1193
+[ID:002] PresCurrent:384, GoalCurrent:1193
+[ID:002] PresCurrent:383, GoalCurrent:1193
+[ID:002] PresCurrent:383, GoalCurrent:1193
+[ID:002] PresCurrent:381, GoalCurrent:1193
+[ID:002] PresCurrent:383, GoalCurrent:1193
+[ID:002] PresCurrent:380, GoalCurrent:1193
+[ID:002] PresCurrent:306, GoalCurrent:1193
+[ID:002] PresCurrent:308, GoalCurrent:1193
+// I removed my hand somewhere here
+[ID:002] PresCurrent:309, GoalCurrent:1193
+[ID:002] PresCurrent:302, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:263, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:262, GoalCurrent:1193
+[ID:002] PresCurrent:261, GoalCurrent:1193
+[ID:002] PresCurrent:261, GoalCurrent:1193
+[ID:002] PresCurrent:261, GoalCurrent:1193
+[ID:002] PresCurrent:250, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:250, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:092, GoalCurrent:1193
+[ID:002] PresCurrent:023, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:015, GoalCurrent:1193
+// started unwinding the cable, so current is unsurprisingly low
+start move
+[ID:002] PresCurrent:068, GoalCurrent:1193
+[ID:002] PresCurrent:009, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:000, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:030, GoalCurrent:1193
+[ID:002] PresCurrent:011, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:000, GoalCurrent:1193
+start move
+[ID:002] PresCurrent:025, GoalCurrent:1193
+[ID:002] PresCurrent:010, GoalCurrent:1193
+upon finishing motion:
+[ID:002] PresCurrent:000, GoalCurrent:1193

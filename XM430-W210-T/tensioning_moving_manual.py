@@ -1,7 +1,6 @@
-# can wind, unwind, move up, or move down antagonistic tendons
-# can only do one pair of antagonist tendons at a time
-# wind, unwind, move up, or move down action specified as user input in command prompt
-# motor choice specified as user input in command prompt
+# can wind, unwind, move up, or move down any number of agonist/antagonist num_pairs
+# wind, unwind, move up, or move down based on user input specified in the command prompt
+# agonist/antagonist pairs specified in command prompt
 
 ################################################################################
 # Copyright 2017 ROBOTIS CO., LTD.
@@ -59,6 +58,7 @@ ADDR_PRO_TORQUE_ENABLE      = 64               # Control table address is differ
 ADDR_PRO_LED_RED            = 65
 ADDR_PRO_GOAL_POSITION      = 116
 ADDR_PRO_PRESENT_POSITION   = 132
+ADDR_PRO_PRESENT_CURRENT    = 126
 
 # Data Byte Length
 LEN_PRO_GOAL_POSITION       = 4
@@ -68,19 +68,13 @@ LEN_PRO_PRESENT_POSITION    = 4
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
-DXLAN_ID                    = int(input("What is the ID of the antagonist motor?"))
-DXLAG_ID                    = int(input("What is the ID of the agonist motor?"))
-DXL_TOTAL                   = list(range(1,int(input("How many motors are there?"))+1))
-DXL_MOVE                    = [DXLAN_ID, DXLAG_ID]
-DXL_STATIC                  = DXL_TOTAL.copy()
-DXL_STATIC.remove(DXLAN_ID)
-DXL_STATIC.remove(DXLAG_ID)
-# DXL1_ID                     = 4                 # Dynamixel#1 ID : 1
-# DXL2_ID                     = 6                 # Dynamixel#1 ID : 2
-# DXL3_ID                     = 4                 # Dynamixel#1 ID : 3
-# DXL4_ID                     = 6                 # Dynamixel#1 ID : 4
-# DXL5_ID                     = 4                 # Dynamixel#1 ID : 5
-# DXL6_ID                     = 6                 # Dynamixel#1 ID : 6
+# DXL_TOTAL                   = list(range(1,9)) #list(range(1,int(input("How many motors are there?"))+1))
+num_pairs                   = int(input("How many agonist, antagonist pairs do you want to move simultaneously?  "))
+DXLAG_ID                    = list(map(int,input("Enter the agonist motor numbers (separated by a space):  ").strip().split()))[:num_pairs]
+DXLAN_ID                    = list(map(int,input("Enter the antagonist motor numbers (in the same order, separated by a space):  ").strip().split()))[:num_pairs]
+DXL_MOVE                    = [x for y in zip(DXLAG_ID, DXLAN_ID) for x in y]
+DXL_TOTAL                   = DXL_MOVE + list(map(int,input("Any other motors to turn on?:  ").strip().split()))
+
 BAUDRATE                    = 1000000           # Dynamixel default baudrate : 57600
 DEVICENAME                  = 'COM3'            # Check which port is being used on your controller
 
@@ -88,11 +82,43 @@ OPERATION_MODE              = 0x02
 EXT_POSITION_CONTROL_MODE   = 4                 # Value for extended position control mode (operating mode)
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
-DXL_START_POSITION_VALUE    = 0                # Dynamixel will rotate between this value
+DXL_START_POSITION_VALUE    = 0                 # Dynamixel will rotate between this value
 ROTATE_AMOUNT               = 50
 DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
 
 index = 1
+
+def curr2Amps(current_reading):
+    return current_reading*2.69/1000
+    return int(current_amps*1000/2.69)
+
+def current2torque(current_amps):
+    return float((current_amps - 0.1775)/0.95)
+
+def calc_torque(ifprint):
+    # calculate the torque based on measured current
+    dxl_present_current = [0]*len(DXL_MOVE)
+    torque = [0]*len(DXL_MOVE)
+    count = 0
+    for motor_id in DXL_MOVE:
+        # Read present current
+        dxl_present_current[count], dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_CURRENT)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("[ID:%-2d]: %s" % (motor_id, packetHandler.getRxPacketError(dxl_error)))
+
+        # convert current unit to amps
+        dxl_present_current[count] = curr2Amps(dxl_present_current[count])
+        torque[count] = current2torque(dxl_present_current[count])
+        count = count+1
+    if ifprint == True:
+        measurements = ''
+        for i in range(len(DXL_MOVE)):
+            # measurements = measurements + ("    [ID:%02d] PresTorque:%3.2fNm, PresCurrent:%8.4fA" % (DXL_TENSIONED[i], torque[i], dxl_present_current[i]))
+            measurements = measurements + ("    [ID:%02d] PresTorque:%3.2fNm" % (DXL_MOVE[i], torque[i]))
+        print(measurements)
+    return torque, dxl_present_current
 
 # Initialize PortHandler instance
 # Set the port path
@@ -163,18 +189,18 @@ for motor_id in DXL_TOTAL:
         quit()
 
 # set initial goal position to current position
-dxl_present_position = [0]*DXL_TOTAL[-1]
-dx_comm_result = [0]*DXL_TOTAL[-1]
-dx_error = [0]*DXL_TOTAL[-1]
-dxl_goal_position =  [0]*DXL_TOTAL[-1]
+dxl_present_position = [0]*max(DXL_TOTAL)
+dx_comm_result = [0]*max(DXL_TOTAL)
+dx_error = [0]*max(DXL_TOTAL)
+dxl_goal_position =  [0]*max(DXL_TOTAL)
 for motor_id in DXL_TOTAL:
     dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
     dxl_goal_position[motor_id-1] = [dxl_present_position[motor_id-1], dxl_present_position[motor_id-1]]
 
 print("*********")
 
-print('Press "u" to move the finger up, "d" to move the finger down')
-print('Press "b" to pull both motors, "r" to release both motors')
+print('Press "u" to move the finger(s) up, "d" to move the finger(s) down')
+print('Press "b" to pull all moving motors, "r" to release all moving motors')
 print('Press "c" to change which motors you manipulate')
 print('Press ESC to exit')
 
@@ -184,20 +210,22 @@ while 1:
     if keypress == b'\x1b':
         break
     elif keypress == b'u':
-        direction = [-1,1]
+        direction = [1,-1]*num_pairs
     elif keypress == b'd':
-        direction = [1,-1]
+        direction = [-1,1]*num_pairs
     elif keypress == b'b':
-        direction = [1,1]
+        direction = [1,1]*num_pairs
     elif keypress == b'r':
-        direction = [-1,-1]
+        direction = [-1,-1]*num_pairs
     elif keypress == b'c':
-        DXLAN_ID                    = int(input("What is the ID of the antagonist motor?"))
-        DXLAG_ID                    = int(input("What is the ID of the agonist motor?"))
-        DXL_MOVE                    = [DXLAN_ID, DXLAG_ID]
-        direction = [1,1]
-        print('Motors changed')
+        num_pairs = int(input("How many agonist, antagonist pairs do you want to move simultaneously?  "))
+        DXLAG_ID  = list(map(int,input("Enter the agonist motor numbers (separated by a space):  ").strip().split()))[:num_pairs]
+        DXLAN_ID  = list(map(int,input("Enter the antagonist motor numbers (in the same order, separated by a space):  ").strip().split()))[:num_pairs]
+        DXL_MOVE  = [x for y in zip(DXLAG_ID, DXLAN_ID) for x in y]
+        direction = [0,0]*num_pairs
+        print('Motors changed.')
     else:
+        direction = [0,0]*num_pairs
         print("Invalid key")
 
     # write new goal position
@@ -207,7 +235,8 @@ while 1:
         dxl_goal_position[motor_id-1] = [dxl_goal_position[motor_id-1][1], new_goal]
         count = count + 1
 
-    param_goal_position = [0]*DXL_TOTAL[-1]
+    # move the finger to a goal position that's defined in the code
+    param_goal_position = [0]*max(DXL_TOTAL)
     for motor_id in DXL_TOTAL:
         # Allocate goal position value into byte array
         param_goal_position[motor_id-1] = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[motor_id-1][1])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[motor_id-1][1])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[motor_id-1][1])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[motor_id-1][1]))]
@@ -228,12 +257,12 @@ while 1:
 
     moving = True
     while moving:
-        # it's stick in this while loop!!!!!!!!!!!!!!!!!!!!!!!!!!!!! nothing moves!!!!!!!!!!!!!!!!!
         # Bulkread present positions
         dxl_comm_result = groupBulkRead.txRxPacket()
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
         # print('Bulkread present positions')
+
         # Check if groupbulkread data is available
         for motor_id in DXL_TOTAL:
             dxl_getdata_result = groupBulkRead.isAvailable(motor_id, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
@@ -252,20 +281,25 @@ while 1:
             if not (abs(dxl_goal_position[motor_id-1][1] - dxl_present_position[motor_id-1]) > DXL_MOVING_STATUS_THRESHOLD):
                 moving = False
 
+    # measure torque after finishing moving
+    torque, dxl_present_current = calc_torque(True)
+
 
 # Clear bulkread parameter storage
 groupBulkRead.clearParam()
 
-# Disable Torque
-for motor_id in DXL_TOTAL:
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-
-print("torques disabled")
+print('Disable torque? y/n')
+keypress = msvcrt.getch()
+if keypress == b'y':
+    for motor_id in DXL_TOTAL:
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+    print("torques disabled")
+elif keypress == b'n':
+    print('motors still on')
 
 # Close port
 portHandler.closePort()
