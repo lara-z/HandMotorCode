@@ -42,6 +42,7 @@ os.sys.path.append('../dynamixel_functions_py')             # Path setting
 # import dynamixel_functions as dynamixel                     # Uses DYNAMIXEL SDK library
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 import keyboard
+from conversions import *
 
 # Control table address
 ADDR_OPERATING_MODE         = 11
@@ -166,10 +167,10 @@ while 1:
         elif dxl_error != 0:
             print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-        torque = float((dxl_present_current/1000 - 0.1775)/0.95)
+        torque = current2torque(curr2Amps(dxl_present_current))
         # print(torque)
         # print("[ID:%03d] PresCurrent:%03d, GoalCurrent:%03d" % (DXL_ID, dxl_present_current, dxl_goal_current))
-        print("[ID:%02d] PresTorque:%8.2f, PresCurrent:%8.2f, GoalCurrent:%03d" % (DXL_ID, torque, dxl_present_current, dxl_goal_current))
+        print("[ID:%02d] PresTorque:%8.2f, PresCurrent:%8.2f, GoalCurrent:%03d" % (DXL_ID, torque, curr2Amps(dxl_present_current), curr2Amps(dxl_goal_current)))
         # print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (DXL_ID, dxl_goal_position[index], dxl_present_position))
 
         if not abs(dxl_goal_position[index] - dxl_present_position) > DXL_MOVING_STATUS_THRESHOLD:

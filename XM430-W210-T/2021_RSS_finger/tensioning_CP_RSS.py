@@ -52,6 +52,7 @@ os.sys.path.append('../dynamixel_functions_py')             # Path setting
 
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 import keyboard
+from conversions import *
 
 # Control table address
 ADDR_OPERATING_MODE         = 11
@@ -76,7 +77,7 @@ PROTOCOL_VERSION            = 2.0               # See which protocol version is 
 
 # Default setting
 DXL_TOTAL                   = list(range(1,9)) #list(range(1,int(input("How many motors are there?"))+1))
-joint_move                  = 0 #int(input("Which joint would you like to move (most proximal joint is 0)?  "))
+joint_move                  = 2 #int(input("Which joint would you like to move (most proximal joint is 0)?  "))
 DXLAG_ID                    = [2, 8, 3] #list(map(int,input("Enter the agonist motor numbers (separated by a space, proximal to distal):  ").strip().split()))[:len(DXLAG_ID)]
 DXLAN_ID                    = [5, 7, 1] #list(map(int,input("Enter the antagonist motor numbers (separated by a space, proximal to distal):  ").strip().split()))[:len(DXLAG_ID)]
 DXL_MOVE                    = [DXLAG_ID[joint_move], DXLAN_ID[joint_move]]
@@ -91,23 +92,11 @@ CURRENT_BASED_POSITION      = 5                 # Value for current-based positi
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
 
-def curr2Amps(current_reading):
-    return current_reading*2.69/1000
-
-def torque2current(torque):
-    # convert based on tau = Kt*I
-    current_amps = (torque*0.95 + 0.1775)
-    # convert to current units used by motor
-    return int(current_amps*1000/2.69)
-
-def current2torque(current_amps):
-    return float((current_amps - 0.1775)/0.95)
-
-JOINT_TORQUE               = [0.4, 0.4, 0.3, 0.3, 0.1, 0.1]  # Nm, desired torque for each joint motor ordered following DXL_TENSIONED
+JOINT_TORQUE               = [0.4, 0.4, 0.3, 0.3, 0.2, 0.2]  # Nm, desired torque for each joint motor ordered following DXL_TENSIONED
 TORQUE_MARGIN               = 0.06      # the maximum value above the desired torque that is still an acceptable torque value
-DESIRED_CURRENT             = torque2current(0.9)            # desired current based on desired torque and converted to
-CURRENT_LIMIT               = torque2current(2.0)            # desired current based on desired torque and converted to
-DESIRED_PWM                 = int(93/0.113)     # desired PWM value in units of 0.113%
+DESIRED_CURRENT             = torque2current(0.4)            # desired current based on desired torque and converted to
+CURRENT_LIMIT               = torque2current(3.0)            # desired current based on desired torque and converted to
+DESIRED_PWM                 = int(100/0.113)     # desired PWM value in units of 0.113%
 DXL_START_POSITION_VALUE    = 0                 # Dynamixel will rotate between this value
 ROTATE_AMOUNT               = 100
 DXL_MOVING_STATUS_THRESHOLD = 40                # Dynamixel moving status threshold
@@ -117,8 +106,9 @@ index = 1
 
 def calc_torque(ifprint):
     # calculate the torque based on measured current
-    dxl_present_current = [0]*len(DXL_TENSIONED)
-    torque = [0]*len(DXL_TENSIONED)
+    error_status = False
+    dxl_present_current = [0]*max(DXL_TOTAL)
+    torque = [0]*max(DXL_TOTAL)
     count = 0
     for motor_id in DXL_TENSIONED:
         # Read present current
@@ -128,9 +118,7 @@ def calc_torque(ifprint):
         elif dxl_error != 0:
             print("[ID:%-2d]: %s" % (motor_id, packetHandler.getRxPacketError(dxl_error)))
             dxl_error_message, dxl_comm_result, dxl_error = packetHandler.read1ByteTxRx(portHandler, motor_id, ADDR_PRO_HARDWARE_ERROR)
-            # print(dxl_error_message)
-            # print(dxl_comm_result)
-            # print(dxl_error)
+            error_status = True
 
         # convert current unit to amps
         dxl_present_current[count] = curr2Amps(dxl_present_current[count])
@@ -147,7 +135,7 @@ def calc_torque(ifprint):
             # measurements = measurements + ("    [ID:%02d] PresTorque:%3.2fNm, PresCurrent:%8.4fA" % (DXL_TENSIONED[i], torque[i], dxl_present_current[i]))
             measurements = measurements + ("    [ID:%02d] Torque: %3.2fNm" % (DXL_TENSIONED[i], torque[i]))
         print(measurements)
-    return torque, dxl_present_current
+    return torque, dxl_present_current, error_status
 
 def setCurrent():
     # move the finger to a goal current that's defined in the code
@@ -190,7 +178,9 @@ def setCurrent():
         for motor_id in DXL_TOTAL:
             dxl_present_current[motor_id-1] = groupBulkRead.getData(motor_id, ADDR_PRO_PRESENT_CURRENT, LEN_PRO_CURRENT)
 
-        torque, dxl_present_current = calc_torque(True)
+        torque, dxl_present_current, error_status = calc_torque(True)
+        if error_status == True:
+            moving = False
         # print("[ID:%03d] Present Position : %d \t [ID:%03d] Present Position : %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_present_position))
 
         for motor_id in DXL_TOTAL:
@@ -237,7 +227,9 @@ def move(goal_position):
         for motor_id in DXL_TOTAL:
             dxl_present_position[motor_id-1] = groupBulkRead.getData(motor_id, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
 
-        torque, dxl_present_current = calc_torque(True)
+        torque, dxl_present_current, error_status = calc_torque(True)
+        if error_status == True:
+            moving = False
         # print("[ID:%03d] Present Position : %d \t [ID:%03d] Present Position : %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_present_position))
 
         for motor_id in DXL_TOTAL:
@@ -247,18 +239,22 @@ def move(goal_position):
 def tension():
     # keep moving the finger to the desired torque until the desired torque is achieved
     ROTATE_AMOUNT = 5
-    torque, dxl_present_current = calc_torque(True)
+    torque, dxl_present_current, error_status = calc_torque(True)
 
     num_tensioned = 0;
     print('Start tensioning')
-    while num_tensioned < len(DXL_TENSIONED):
+    while (num_tensioned < len(DXL_TENSIONED)) & (error_status == False):
         # write new goal position
         num_tensioned = 0;
         count = 0
         for motor_id in DXL_TENSIONED:
-            if torque[count] > (JOINT_TORQUE[count] + TORQUE_MARGIN):
+            if round(torque[count],2) > (JOINT_TORQUE[count] + 0.2):
+                new_goal  = (dxl_goal_position[motor_id-1][1] - 3*ROTATE_AMOUNT)
+            elif round(torque[count],2) > (JOINT_TORQUE[count] + TORQUE_MARGIN):
                 new_goal  = (dxl_goal_position[motor_id-1][1] - ROTATE_AMOUNT)
-            elif torque[count] < JOINT_TORQUE[count]:
+            elif round(torque[count],2) < 0.05:
+                new_goal  = (dxl_goal_position[motor_id-1][1] + 5*ROTATE_AMOUNT)
+            elif round(torque[count],2) < JOINT_TORQUE[count]:
                 new_goal  = (dxl_goal_position[motor_id-1][1] + ROTATE_AMOUNT)
             else:
                 new_goal = dxl_goal_position[motor_id-1][1]
@@ -267,7 +263,7 @@ def tension():
             count = count + 1
 
         move(dxl_goal_position)
-        torque, dxl_present_current = calc_torque(False)
+        torque, dxl_present_current, error_status = calc_torque(False)
     print('Finished tensioning')
 
 # Initialize PortHandler instance
@@ -430,7 +426,7 @@ while 1:
 
     move(dxl_goal_position)
     tension()
-
+    error_status = False
 
 # Clear bulkread parameter storage
 groupBulkRead.clearParam()

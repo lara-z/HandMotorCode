@@ -76,9 +76,9 @@ PROTOCOL_VERSION            = 2.0               # See which protocol version is 
 
 # Default setting
 # DXL_TOTAL                   = list(range(1,9)) #list(range(1,int(input("How many motors are there?"))+1))
-joint_move                  = int(input("Which joint would you like to move (most proximal joint is 0)?  "))
-DXLAG_ID                    = list(map(int,input("Enter the agonist motor numbers (separated by a space, proximal to distal):  ").strip().split()))[:len(DXLAG_ID)]
-DXLAN_ID                    = list(map(int,input("Enter the antagonist motor numbers (separated by a space, proximal to distal):  ").strip().split()))[:len(DXLAG_ID)]
+DXLAG_ID                    = list([2, 8, 1]) #list(map(int,input("Enter the agonist motor numbers (separated by a space, proximal to distal):  ").strip().split()))
+DXLAN_ID                    = list([5, 7, 3]) #list(map(int,input("Enter the antagonist motor numbers (separated by a space, proximal to distal):  ").strip().split()))
+joint_move                  = 1 #int(input("Which joint would you like to move (most proximal joint is 0)?  "))
 DXL_MOVE                    = [DXLAG_ID[joint_move], DXLAN_ID[joint_move]]
 DXL_TENSIONED               = [x for y in zip(DXLAG_ID[:(1+joint_move)], DXLAN_ID[:(1+joint_move)]) for x in y]
 DXL_TOTAL                   = DXLAG_ID + DXLAN_ID
@@ -195,7 +195,7 @@ def setCurrent():
         # print("[ID:%03d] Present Position : %d \t [ID:%03d] Present Position : %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_present_position))
 
         for motor_id in DXL_TOTAL:
-                if not (abs(DESIRED_CURRENT - dxl_present_current[motor_id-1]) > DXL_CURRENT_THRESHOLD):
+            if not (abs(DESIRED_CURRENT - dxl_present_current[motor_id-1]) > DXL_CURRENT_THRESHOLD):
                 moving = False
 
 def move(goal_position):
@@ -250,21 +250,29 @@ def tension():
     ROTATE_AMOUNT = 5
     torque, dxl_present_current = calc_torque(True)
 
-    while any(x < DESIRED_TORQUE for x in torque) | any(x > (DESIRED_TORQUE + TORQUE_MARGIN) for x in torque):
+    num_tensioned = 0;
+    while num_tensioned < len(DXL_TENSIONED):
         # write new goal position
+        num_tensioned = 0;
         count = 0
         for motor_id in DXL_TENSIONED:
-            if torque[count] > (DESIRED_TORQUE + TORQUE_MARGIN):
+            if round(torque[count],2) > (DESIRED_TORQUE + 0.2):
+                new_goal  = (dxl_goal_position[motor_id-1][1] - 3*ROTATE_AMOUNT)
+            elif round(torque[count],2) > (DESIRED_TORQUE + TORQUE_MARGIN):
                 new_goal  = (dxl_goal_position[motor_id-1][1] - ROTATE_AMOUNT)
-            elif torque[count] < DESIRED_TORQUE:
+            elif round(torque[count],2) < 0.05:
+                new_goal  = (dxl_goal_position[motor_id-1][1] + 5*ROTATE_AMOUNT)
+            elif round(torque[count],2) < DESIRED_TORQUE:
                 new_goal  = (dxl_goal_position[motor_id-1][1] + ROTATE_AMOUNT)
             else:
                 new_goal = dxl_goal_position[motor_id-1][1]
+                num_tensioned += 1
             dxl_goal_position[motor_id-1] = [dxl_goal_position[motor_id-1][1], new_goal]
             count = count + 1
 
         move(dxl_goal_position)
         torque, dxl_present_current = calc_torque(False)
+    print('Finished tensioning')
 
 # Initialize PortHandler instance
 # Set the port path
@@ -371,10 +379,10 @@ for motor_id in DXL_TOTAL:
         quit()
 
 # set initial goal position to current position
-dxl_present_position = [0]*len(DXL_TOTAL)
-dx_comm_result = [0]*len(DXL_TOTAL)
-dx_error = [0]*len(DXL_TOTAL)
-dxl_goal_position =  [0]*len(DXL_TOTAL)
+dxl_present_position = [0]*max(DXL_TOTAL)
+dx_comm_result = [0]*max(DXL_TOTAL)
+dx_error = [0]*max(DXL_TOTAL)
+dxl_goal_position =  [0]*max(DXL_TOTAL)
 for motor_id in DXL_TOTAL:
     dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
     dxl_goal_position[motor_id-1] = [dxl_present_position[motor_id-1], dxl_present_position[motor_id-1]]

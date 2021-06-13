@@ -75,7 +75,7 @@ EXT_POSITION_CONTROL_MODE   = 4                 # Value for extended position co
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_START_POSITION_VALUE    = 0                 # Dynamixel will rotate between this value
-ROTATE_AMOUNT_DEG           = 45                # degrees, will rotate this amount on either side of the starting position for specified joint
+ROTATE_AMOUNT_DEG           = 15                # degrees, will rotate this amount on either side of the starting position for specified joint
 ROTATE_AMOUNT               = int(ROTATE_AMOUNT_DEG/0.088)       # convert from degrees to pulses
 DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
 
@@ -92,7 +92,7 @@ NEG_MOTORS                  = [DXLAG_ID[i] for i in DXL_DISTAL_ODD] + [DXLAN_ID[
 
 r_m                         = 11.78 # mm, radius of pulley jointed to motor where cable is wound
 r_j                         = 4.5 + 0.7/2 # mm, radius of the joint
-compensation                = int(ROTATE_AMOUNT*(0.2*r_m/r_j)) # the amount that more distal motors must move to keep the finger straight
+compensation                = int(ROTATE_AMOUNT*(-0.4*r_m/r_j)) # 0.2, the amount that more distal motors must move to keep the finger straight
 
 WAIT_TIME                   = 0.7 # seconds
 
@@ -189,6 +189,7 @@ for motor_id in POS_MOTORS:
     dxl_goal_position[motor_id-1] = [dxl_goal_position[motor_id-1][1] + compensation, dxl_goal_position[motor_id-1][1] - compensation]
 
 for motor_id in NEG_MOTORS:
+
     # compensate distally for proximal movement (i.e., maintain distal joint angles during proximal movement)
     dxl_goal_position[motor_id-1] = [dxl_goal_position[motor_id-1][1] - compensation, dxl_goal_position[motor_id-1][1] + compensation]
 
