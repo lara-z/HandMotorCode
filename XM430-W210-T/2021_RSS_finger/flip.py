@@ -1,6 +1,4 @@
 # makes finger follow desired trajectory path for RSS paper
-# velocity limit doesn't work (but is it supposed to?)
-# after manually tensioning, retensioning causes back-and-forth movements -- why???
 
 ################################################################################
 # Copyright 2017 ROBOTIS CO., LTD.
@@ -66,8 +64,9 @@ ADDR_PRO_CURRENT_LIMIT      = 38
 ADDR_PRO_GOAL_CURRENT       = 102
 ADDR_PRO_PRESENT_CURRENT    = 126
 ADDR_PRO_GOAL_PWM           = 100
-ADDR_PRO_VELOCITY_LIMIT     = 44
 ADDR_PRO_HARDWARE_ERROR     = 70
+ADDR_PRO_DRIVE_MODE         = 10
+ADDR_PRO_VELOCITY_PROFILE   = 112
 
 # Data Byte Length
 LEN_PRO_GOAL_POSITION       = 4
@@ -84,6 +83,7 @@ DEVICENAME                  = 'COM3'            # Check which port is being used
 OPERATION_MODE              = 0x02
 EXT_POSITION_CONTROL_MODE   = 4                 # Value for extended position control mode (operating mode)
 CURRENT_BASED_POSITION      = 5                 # Value for current-based position control mode (operating mode)
+VELOCITY_BASED_PROFILE      = 0
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD = 5                # Dynamixel moving status threshold
@@ -93,8 +93,8 @@ JOINT_TORQUE                = [0.4, 0.4, 0.4, 0.4, 0.02, 0.02]  # Nm, desired to
 TORQUE_MARGIN               = 0.06      # the maximum value above the desired torque that is still an acceptable torque value
 DESIRED_CURRENT             = torque2current(GOAL_TORQUE)            # desired current based on desired torque and converted to
 CURRENT_LIMIT               = torque2current(3.0)            # desired current based on desired torque and converted to
-DESIRED_PWM                 = int(93/0.113)     # desired PWM value in units of 0.113%
-VELOCITY_LIMIT              = 5
+DESIRED_PWM                 = int(100/0.113)     # desired PWM value in units of 0.113%
+VELOCITY_LIMIT              = int(3/0.229)
 ROTATE_AMOUNT               = deg2pulse(30)
 DXL_MOVING_STATUS_THRESHOLD = 10                # Dynamixel moving status threshold
 DXL_CURRENT_THRESHOLD       = torque2current(0.08)
@@ -126,12 +126,17 @@ compensation_1              = -0.2*r_m/r_j # the amount that more distal motors 
 # define desired trajectory
 num_steps                   = 6
 deg2pulse_vec               = np.vectorize(deg2pulse)
-TRAJECTORY_J1               = np.append(np.linspace(0,90,num_steps),0) # list(range(0,90,10))
+# TRAJECTORY_J1               = np.append(np.linspace(0,90,num_steps),5) # list(range(0,90,10))
+TRAJECTORY_J1               = np.array([0,90,0])
 TRAJECTORY_J1               = deg2pulse_vec(TRAJECTORY_J1) # [deg2pulse(step) for step in TRAJECTORY_J1]
 # TRAJECTORY_J2               = [0]*len(TRAJECTORY_J1)    # should be 0-90 in opposite direction compared to joint 1
-TRAJECTORY_J2               = np.append(np.linspace(0,-90,num_steps),0) # list(range(0,90,10))
-TRAJECTORY_J2               = deg2pulse_vec(TRAJECTORY_J2) # [deg2pulse(step) for step in TRAJECTORY_J1]
-TRAJECTORY_J3               = [0]*len(TRAJECTORY_J1)    # should be 0-90 in same direction as joint 2 but with delay in start time
+TRAJECTORY_J2               = np.array([0,-90,0])
+# TRAJECTORY_J2               = np.append(np.linspace(0,-90,num_steps),5) # list(range(0,90,10))
+TRAJECTORY_J2               = deg2pulse_vec(TRAJECTORY_J2) # [deg2pulse(step) for step in TRAJECTORY_J2]
+# TRAJECTORY_J3               = [0]*len(TRAJECTORY_J1)    # should be 0-90 in same direction as joint 2 but with delay in start time
+TRAJECTORY_J3               = np.array([0,90,0])
+# TRAJECTORY_J3               = np.append(np.linspace(0,90,num_steps),0) # list(range(0,90,10))
+TRAJECTORY_J3               = deg2pulse_vec(TRAJECTORY_J3) # [deg2pulse(step) for step in TRAJECTORY_J2]
 TRAJECTORY                  = np.matrix([TRAJECTORY_J1,TRAJECTORY_J1,TRAJECTORY_J2, TRAJECTORY_J2,TRAJECTORY_J3, TRAJECTORY_J3])     # goal positions time series for joints proximal to distal
 TRAJECTORY_ORDERED          = np.zeros([len(DXL_TOTAL),len(TRAJECTORY_J1)])
 traj_ind                    = 0                             # index used to keep track of which timestep of the trajectory
@@ -142,10 +147,9 @@ def calc_torque(ifprint):
     error_status = False
     dxl_present_current = [0]*max(DXL_TOTAL)
     torque = [0]*max(DXL_TOTAL)
-    count = 0
-    for motor_id in DXL_TENSIONED:
+    for motor_id in DXL_TOTAL:
         # Read present current
-        dxl_present_current[count], dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_CURRENT)
+        dxl_present_current[motor_id-1], dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_CURRENT)
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
         elif dxl_error != 0:
@@ -154,31 +158,30 @@ def calc_torque(ifprint):
             error_status = True
 
         # convert current unit to amps
-        dxl_present_current[count] = curr2Amps(dxl_present_current[count])
+        dxl_present_current[motor_id-1] = curr2Amps(dxl_present_current[motor_id-1])
 
-        if dxl_present_current[count] > 150:
+        if dxl_present_current[motor_id-1] > 150:
             # when the cables are slack, the current is really large, but toque is actually zero so set to zero
-            torque[count] = 0
+            torque[motor_id-1] = 0
         else:
-            torque[count] =current2torque(dxl_present_current[count])
-        count = count+1
+            torque[motor_id-1] = current2torque(dxl_present_current[motor_id-1])
     if ifprint == True:
         measurements = ''
-        for i in range(len(DXL_TENSIONED)):
+        for motor_id in DXL_TENSIONED:
             # measurements = measurements + ("    [ID:%02d] PresTorque:%3.2fNm, PresCurrent:%8.4fA" % (DXL_TENSIONED[i], torque[i], dxl_present_current[i]))
-            measurements = measurements + ("    [ID:%02d] Torque: %3.2fNm" % (DXL_TENSIONED[i], torque[i]))
+            measurements = measurements + ("    [ID:%02d] Torque: %3.2fNm" % (motor_id, torque[motor_id-1]))
         print(measurements)
     return torque, dxl_present_current, error_status
 
 def move(goal_position):
     # move the finger to a goal position that's defined in the code
-    # move the finger to a goal position that's defined in the code
+
     param_goal_position = [0]*max(DXL_TOTAL)
     for motor_id in DXL_TOTAL:
         # Allocate goal position value into byte array
         param_goal_position[motor_id-1] = [DXL_LOBYTE(DXL_LOWORD(goal_position[motor_id-1])), DXL_HIBYTE(DXL_LOWORD(goal_position[motor_id-1])), DXL_LOBYTE(DXL_HIWORD(goal_position[motor_id-1])), DXL_HIBYTE(DXL_HIWORD(goal_position[motor_id-1]))]
 
-        # Add Dynamixel#1 goal position value to the Bulkwrite parameter storage
+        # Add Dynamixel goal position value to the Bulkwrite parameter storage
         dxl_addparam_result = groupBulkWrite.addParam(motor_id, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, param_goal_position[motor_id-1])
         if dxl_addparam_result != True:
             print("[ID:%03d] groupBulkWrite addparam failed" % motor_id)
@@ -211,7 +214,7 @@ def move(goal_position):
         for motor_id in DXL_TOTAL:
             dxl_present_position[motor_id-1] = groupBulkRead.getData(motor_id, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
 
-        torque, dxl_present_current, error_status = calc_torque(True)
+        torque, dxl_present_current, error_status = calc_torque(False)
         if error_status == True:
             moving = False
         # print("[ID:%03d] Present Position : %d \t [ID:%03d] Present Position : %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_present_position))
@@ -223,6 +226,10 @@ def move(goal_position):
 
 def tension():
     # keep moving the finger to the desired torque until the desired torque is achieved
+    # why does it keep shaking back and forth if I change goal position to present position???
+    for motor_id in DXL_TOTAL:
+        dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+
     ROTATE_AMOUNT = 5
     torque, dxl_present_current, error_status = calc_torque(True)
 
@@ -233,18 +240,18 @@ def tension():
         num_tensioned = 0;
         count = 0
         for motor_id in DXL_TENSIONED:
-            if round(torque[count],2) > (JOINT_TORQUE[count] + 0.2):
-                new_goal  = (dxl_goal_position[motor_id-1] - 3*ROTATE_AMOUNT)
-            elif round(torque[count],2) > (JOINT_TORQUE[count] + TORQUE_MARGIN):
-                new_goal  = (dxl_goal_position[motor_id-1] - ROTATE_AMOUNT)
-            elif round(torque[count],2) < 0.05:
-                new_goal  = (dxl_goal_position[motor_id-1] + 5*ROTATE_AMOUNT)
-            elif round(torque[count],2) < JOINT_TORQUE[count]:
-                new_goal  = (dxl_goal_position[motor_id-1] + ROTATE_AMOUNT)
+            if round(torque[motor_id-1],2) > (JOINT_TORQUE[count] + 0.2):
+                new_goal = - 3*ROTATE_AMOUNT
+            elif round(torque[motor_id-1],2) > (JOINT_TORQUE[count] + TORQUE_MARGIN):
+                new_goal = - ROTATE_AMOUNT
+            elif round(torque[motor_id-1],2) < 0.05:
+                new_goal =  5*ROTATE_AMOUNT
+            elif round(torque[motor_id-1],2) < JOINT_TORQUE[count]:
+                new_goal = ROTATE_AMOUNT
             else:
-                new_goal = dxl_goal_position[motor_id-1]
+                new_goal = 0
                 num_tensioned += 1
-            dxl_goal_position[motor_id-1] = new_goal
+            dxl_goal_position[motor_id-1] = dxl_goal_position[motor_id-1] + new_goal
             count = count + 1
 
         move(dxl_goal_position)
@@ -289,7 +296,7 @@ else:
     quit()
 
 # set up motors
-setup = [0]*6
+setup = [0]*7
 # Set operating mode to current-based position control mode
 for motor_id in DXL_TOTAL:
     dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_OPERATING_MODE, CURRENT_BASED_POSITION)
@@ -342,9 +349,9 @@ for motor_id in DXL_TOTAL:
 if setup[3] == len(DXL_TOTAL):
     print("All dynamixel goal PWM values have been successfully changed")
 
-# Set desired velocity
+# Set drive mode
 for motor_id in DXL_TOTAL:
-    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, motor_id, ADDR_PRO_VELOCITY_LIMIT, VELOCITY_LIMIT)
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR_PRO_DRIVE_MODE, VELOCITY_BASED_PROFILE)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
@@ -353,7 +360,7 @@ for motor_id in DXL_TOTAL:
         setup[4] +=1
 
 if setup[4] == len(DXL_TOTAL):
-    print("All dynamixel goal velocity values have been successfully changed")
+    print("All dynamixel drive modes have been successfully changed to velocity-based")
 
 # Enable Torque
 for motor_id in DXL_TOTAL:
@@ -382,8 +389,29 @@ dx_error = [0]*max(DXL_TOTAL)
 dxl_goal_position =  [0]*max(DXL_TOTAL)
 for motor_id in DXL_TOTAL:
     dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
-    dxl_goal_position[motor_id-1] = dxl_present_position[motor_id-1]
+dxl_goal_position = dxl_present_position.copy()
 
+# tension cables
+joint_move    = int(input("Up to which joint would you like to tension (most proximal joint is 0)?  "))
+DXL_TENSIONED = [x for y in zip(DXLAG_ID[:(1+joint_move)], DXLAN_ID[:(1+joint_move)]) for x in y]
+tension()
+
+for motor_id in DXL_TOTAL:
+    dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+dxl_goal_position = dxl_present_position.copy()
+
+# Set velocity profile value (so hand moves more slowly)
+for motor_id in DXL_TOTAL:
+    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, motor_id, ADDR_PRO_VELOCITY_PROFILE, VELOCITY_LIMIT)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    else:
+        setup[6] +=1
+
+if setup[6] == len(DXL_TOTAL):
+    print("All dynamixels now have velocity profile speed set")
 
 print("*********")
 
@@ -392,13 +420,7 @@ while 1:
     DXL_MOVE_ORDER = DXL_MOVE
     if manual_control == False:
         traj_move = True
-        # DXL_MOVE_ORDER = DXL_MOVE[::-1]
         if traj_ind == 0:
-            # tension cables
-            print('Tensioning...')
-            joint_move    = int(input("Up to which joint would you like to tension (most proximal joint is 0)?  "))
-            DXL_TENSIONED = [x for y in zip(DXLAG_ID[:(1+joint_move)], DXLAN_ID[:(1+joint_move)]) for x in y]
-            tension()
 
             # calculate trajectory using current motor position now that cables are num_tensioned
             direction = [-1,1]*num_pairs
@@ -417,10 +439,13 @@ while 1:
                 TRAJECTORY_ORDERED[motor_id-1,:] = TRAJECTORY[count,:]
                 count = count + 1
             TRAJECTORY_ORDERED = TRAJECTORY_ORDERED.astype(int)
-            print('Tensioned. Will start moving')
+            print('Will start moving')
             time.sleep(1.5)
         if traj_ind >= len(TRAJECTORY_J1):
-            break
+            traj_ind = 0
+            traj_move = False
+            direction = [0,0]*num_pairs
+            manual_control = True
     else:
         print('Press "u" to move the finger(s) up, "d" to move the finger(s) down')
         print('Press "b" to pull all moving motors, "r" to release all moving motors')
@@ -444,7 +469,6 @@ while 1:
             direction[2*joint_move+1] = -1
         elif keypress == b'b':
             direction = [0,0]*num_pairs
-            print(DXLAG_ID[joint_move])
             direction[2*joint_move] = 1
             direction[2*joint_move+1] = 1
         elif keypress == b'r':
@@ -453,6 +477,7 @@ while 1:
             direction[2*joint_move+1] = -1
         elif keypress == b'c':
             joint_move = int(input("Which joint would you like to move (most proximal joint is 0)?  "))
+            DXL_TENSIONED = [x for y in zip(DXLAG_ID[:(1+joint_move)], DXLAN_ID[:(1+joint_move)]) for x in y]
             direction = [0,0]*num_pairs
             direction[2*joint_move] = 1
             direction[2*joint_move+1] = 1
@@ -464,7 +489,7 @@ while 1:
                 # calculate the trajectory to compensation for motion in more proximal joints
                 for motor_id in DXL_TOTAL:
                     dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
-                basepoint = dxl_present_position
+                basepoint = dxl_present_position.copy()
 
                 count = 0
                 direction = [-1,1]*num_pairs
@@ -499,13 +524,15 @@ while 1:
 
     if traj_move == True:
         # print('Completed %d %% of movement' % (100*(traj_ind+1)/len(TRAJECTORY_J1)))
+        for motor_id in DXL_TOTAL:
+            dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+
         dxl_goal_position = [TRAJECTORY_ORDERED[count,traj_ind] for count in range(0,len(DXL_TOTAL))]
-        traj_move = False
         traj_ind += 1
     else:        # calculate goal positions for each motor
         for motor_id in DXL_TOTAL:
             dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
-        dxl_goal_position = dxl_present_position
+        dxl_goal_position = dxl_present_position.copy()
         count = 0
         for motor_id in DXL_MOVE_ORDER:
             dxl_goal_position[motor_id-1] = dxl_goal_position[motor_id-1] + direction[count]*ROTATE_AMOUNT
@@ -518,16 +545,15 @@ while 1:
             # elif motor_id == 3:
             #     dxl_goal_position[motor_id-1] += + int(compensation_1*ROTATE_AMOUNT) - int(compensation_1*ROTATE_AMOUNT)
             count += 1
-    # print(dxl_goal_position)
-    # print([goal - base for goal, base in zip(dxl_goal_position, basepoint)])
-    move(dxl_goal_position)
-    print('Moved')
+
+    if dxl_goal_position != dxl_present_position:
+        move(dxl_goal_position)
+        print('Moved')
+        if traj_move == True:
+            time.sleep(6)
+    traj_move = False
     torque, dxl_present_current, error_status = calc_torque(True)
     # tension()
-
-    # measure torque after finishing moving
-    # torque, dxl_present_current, error_status = calc_torque(False)
-
 
 # Clear bulkread parameter storage
 groupBulkRead.clearParam()
