@@ -399,8 +399,6 @@ joint_move    = int(input("Up to which joint would you like to tension (most pro
 DXL_TENSIONED = [x for y in zip(DXLAG_ID[:(1+joint_move)], DXLAN_ID[:(1+joint_move)]) for x in y]
 tension()
 
-for motor_id in DXL_TOTAL:
-    dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
 dxl_goal_position = dxl_present_position.copy()
 
 # Set velocity profile value (so hand moves more slowly)
