@@ -112,7 +112,7 @@ def initialize(DXL_TOTAL, com_num):
 
 	# set up motors
 	setup = [0]*7
-	# Set operating mode to current-based position control mode
+	# Set operating mode to extended position control mode
 	for motor_id in DXL_TOTAL:
 		dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.OPERATING_MODE, EXT_POSITION_CONTROL_MODE)
 		if dxl_comm_result != COMM_SUCCESS:
@@ -124,19 +124,24 @@ def initialize(DXL_TOTAL, com_num):
 
 	if setup[0] == len(DXL_TOTAL):
 		print("All dynamixel operating modes have been successfully changed")
+	else:
+		print('Error(s) encountered. Shutting down motors...')
+		shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+		print('PLEASE RE-RUN CODE. The motor error should now be fixed (torque has been turned off)')
+		quit()
 
-	# Set drive mode
-	for motor_id in DXL_TOTAL:
-		dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_DRIVE_MODE, VELOCITY_BASED_PROFILE)
-		if dxl_comm_result != COMM_SUCCESS:
-			print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-		elif dxl_error != 0:
-			print("%s" % packetHandler.getRxPacketError(dxl_error))
-		else:
-			setup[4] +=1
-
-	if setup[4] == len(DXL_TOTAL):
-		print("All dynamixel drive modes have been successfully changed to velocity-based")
+	# # Set drive mode
+	# for motor_id in DXL_TOTAL:
+	# 	dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_DRIVE_MODE, VELOCITY_BASED_PROFILE)
+	# 	if dxl_comm_result != COMM_SUCCESS:
+	# 		print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+	# 	elif dxl_error != 0:
+	# 		print("%s" % packetHandler.getRxPacketError(dxl_error))
+	# 	else:
+	# 		setup[4] +=1
+	#
+	# if setup[4] == len(DXL_TOTAL):
+	# 	print("All dynamixel drive modes have been successfully changed to velocity-based")
 
 	# Enable Torque
 	for motor_id in DXL_TOTAL:
@@ -164,14 +169,18 @@ def initialize(DXL_TOTAL, com_num):
 
 	return packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
 
-def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN):
+def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=True):
 	TORQUE_DISABLE = 0                 # Value for disabling the torque
 
 	# Clear bulkread parameter storage
 	groupBulkRead.clearParam()
 
-	print('Disable torque? y/n')
-	keypress = getch()
+	if  askAction==True:
+		print('Disable torque? y/n')
+		keypress = getch()
+	else:
+		keypress = 'y'
+
 	if keypress == 'y':
 		for motor_id in DXL_TOTAL:
 			dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_TORQUE_ENABLE, TORQUE_DISABLE)
@@ -215,12 +224,14 @@ def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, g
 
 	moving = True
 	while moving:
+		print('moving')
         # get present position
 		dxl_present_position = dxl_get_pos(DXL_TOTAL, packetHandler, groupBulkRead, ADDR, LEN)
 
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
+	print('***')
 	return dxl_present_position
 
 def dxl_get_pos(DXL_IDS, packetHandler, groupBulkRead, ADDR, LEN):
