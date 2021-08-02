@@ -50,7 +50,7 @@ def initialize(DXL_TOTAL, com_num):
 		PRO_PRESENT_POSITION    = 4
 		PRO_CURRENT             = 2
 		PRO_PWM                 = 2
-	
+
 	# Protocol version
 	PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
@@ -67,15 +67,15 @@ def initialize(DXL_TOTAL, com_num):
 
 	GOAL_TORQUE                 = 0.45
 	JOINT_TORQUE                = [0.4, 0.4, 0.4, 0.4, 0.02, 0.02]  # Nm, desired torque for each joint motor ordered following DXL_TENSIONED
-	TORQUE_MARGIN               = 0.06      # the maximum value above the desired torque that is still an acceptable torque value
-	DESIRED_CURRENT             = torque2current(GOAL_TORQUE)            # desired current based on desired torque and converted to
-	CURRENT_LIMIT               = torque2current(3.0)            # desired current based on desired torque and converted to
-	DESIRED_PWM                 = int(100/0.113)     # desired PWM value in units of 0.113%
+	# TORQUE_MARGIN               = 0.06      # the maximum value above the desired torque that is still an acceptable torque value
+	# DESIRED_CURRENT             = torque2current(GOAL_TORQUE)            # desired current based on desired torque and converted to
+	# CURRENT_LIMIT               = torque2current(3.0)            # desired current based on desired torque and converted to
+	# DESIRED_PWM                 = int(100/0.113)     # desired PWM value in units of 0.113%
 	VELOCITY_LIMIT              = int(3/0.229)
 	ROTATE_AMOUNT               = deg2pulse(30)
 	DXL_MOVING_STATUS_THRESHOLD = 10                # Dynamixel moving status threshold
-	DXL_CURRENT_THRESHOLD       = torque2current(0.08)
-	
+	# DXL_CURRENT_THRESHOLD       = torque2current(0.08)
+
 	# Initialize PortHandler instance
 	# Set the port path
 	# Get methods and members of PortHandlerLinux or PortHandlerWindows
@@ -161,7 +161,7 @@ def initialize(DXL_TOTAL, com_num):
 	# set initial goal position to current position
 	dxl_present_position = dxl_get_pos(DXL_TOTAL, packetHandler, groupBulkRead, ADDR, LEN)
 	dxl_goal_position = dxl_present_position.copy()
-	
+
 	return packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
 
 def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN):
@@ -171,8 +171,8 @@ def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN):
 	groupBulkRead.clearParam()
 
 	print('Disable torque? y/n')
-	keypress = msvcrt.getch()
-	if keypress == b'y':
+	keypress = getch()
+	if keypress == 'y':
 		for motor_id in DXL_TOTAL:
 			dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_TORQUE_ENABLE, TORQUE_DISABLE)
 			if dxl_comm_result != COMM_SUCCESS:
@@ -180,46 +180,48 @@ def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN):
 			elif dxl_error != 0:
 				print("%s" % packetHandler.getRxPacketError(dxl_error))
 		print("torques disabled")
-	elif keypress == b'n':
+	elif keypress == 'n':
 		print('motors still on')
 
 	# Close port
 	portHandler.closePort()
-    
+
 def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
 	# will line 249 error with DXL_LOBYTE, etc.?
     # move the finger to a goal position that's defined in the code
 
-    param_goal_position = [0]*len(DXL_TOTAL)
-    count = 0
-    for motor_id in DXL_TOTAL:
-        # Allocate goal position value into byte array
-        param_goal_position[count] = [DXL_LOBYTE(DXL_LOWORD(goal_position[count])), DXL_HIBYTE(DXL_LOWORD(goal_position[count])), DXL_LOBYTE(DXL_HIWORD(goal_position[count])), DXL_HIBYTE(DXL_HIWORD(goal_position[count]))]
+	DXL_MOVING_STATUS_THRESHOLD = 5                # Dynamixel moving status threshold
+
+	param_goal_position = [0]*len(DXL_TOTAL)
+	count = 0
+	for motor_id in DXL_TOTAL:
+		# Allocate goal position value into byte array
+		param_goal_position[count] = [DXL_LOBYTE(DXL_LOWORD(goal_position[count])), DXL_HIBYTE(DXL_LOWORD(goal_position[count])), DXL_LOBYTE(DXL_HIWORD(goal_position[count])), DXL_HIBYTE(DXL_HIWORD(goal_position[count]))]
 
         # Add Dynamixel goal position value to the Bulkwrite parameter storage
-        dxl_addparam_result = groupBulkWrite.addParam(motor_id, ADDR.PRO_GOAL_POSITION, LEN.PRO_GOAL_POSITION, param_goal_position[count])
-        if dxl_addparam_result != True:
-            print("[ID:%03d] groupBulkWrite addparam failed" % motor_id)
-            quit()
-        count += 1
+		dxl_addparam_result = groupBulkWrite.addParam(motor_id, ADDR.PRO_GOAL_POSITION, LEN.PRO_GOAL_POSITION, param_goal_position[count])
+		if dxl_addparam_result != True:
+			print("[ID:%03d] groupBulkWrite addparam failed" % motor_id)
+			quit()
+			count += 1
 
     # Bulkwrite goal position
-    dxl_comm_result = groupBulkWrite.txPacket()
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+	dxl_comm_result = groupBulkWrite.txPacket()
+	if dxl_comm_result != COMM_SUCCESS:
+		print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
 
     # Clear bulkwrite parameter storage
-    groupBulkWrite.clearParam()
+	groupBulkWrite.clearParam()
 
-    moving = True
-    while moving:        
+	moving = True
+	while moving:
         # get present position
-        dxl_present_position = dxl_get_pos(DXL_TOTAL, packetHandler, groupBulkRead, ADDR, LEN)
+		dxl_present_position = dxl_get_pos(DXL_TOTAL, packetHandler, groupBulkRead, ADDR, LEN)
 
-        for count in range(0,len(dxl_present_position)):
-            if not (abs(goal_position[count] - dxl_present_position[motor_id-1]) > DXL_MOVING_STATUS_THRESHOLD):
-                moving = False
-    return dxl_present_position
+		for count in range(0,len(dxl_present_position)):
+			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
+				moving = False
+	return dxl_present_position
 
 def dxl_get_pos(DXL_IDS, packetHandler, groupBulkRead, ADDR, LEN):
 	# Bulkread present positions
@@ -245,7 +247,7 @@ def dxl_get_pos(DXL_IDS, packetHandler, groupBulkRead, ADDR, LEN):
 # get keyboard stroke based on mac or windows operating system
 def getch():
 	import os
-	
+
 	if os.name == 'nt':
 		import msvcrt
 		return msvcrt.getch().decode()

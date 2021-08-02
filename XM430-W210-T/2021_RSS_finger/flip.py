@@ -228,7 +228,7 @@ def tension():
     # keep moving the finger to the desired torque until the desired torque is achieved
     # why does it keep shaking back and forth if I change goal position to present position???
     for motor_id in DXL_TOTAL:
-        dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+        dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
 
     ROTATE_AMOUNT = 5
     torque, dxl_present_current, error_status = calc_torque(True)
@@ -384,11 +384,11 @@ for motor_id in DXL_TOTAL:
 
 # set initial goal position to current position
 dxl_present_position = [0]*max(DXL_TOTAL)
-dx_comm_result = [0]*max(DXL_TOTAL)
-dx_error = [0]*max(DXL_TOTAL)
+dxl_comm_result = [0]*max(DXL_TOTAL)
+dxl_error = [0]*max(DXL_TOTAL)
 dxl_goal_position =  [0]*max(DXL_TOTAL)
 for motor_id in DXL_TOTAL:
-    dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+    dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
 dxl_goal_position = dxl_present_position.copy()
 
 # tension cables
@@ -397,7 +397,7 @@ DXL_TENSIONED = [x for y in zip(DXLAG_ID[:(1+joint_move)], DXLAN_ID[:(1+joint_mo
 tension()
 
 for motor_id in DXL_TOTAL:
-    dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+    dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
 dxl_goal_position = dxl_present_position.copy()
 
 # Set velocity profile value (so hand moves more slowly)
@@ -488,7 +488,7 @@ while 1:
             if traj_ind == 0:
                 # calculate the trajectory to compensation for motion in more proximal joints
                 for motor_id in DXL_TOTAL:
-                    dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+                    dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
                 basepoint = dxl_present_position.copy()
 
                 count = 0
@@ -525,13 +525,13 @@ while 1:
     if traj_move == True:
         # print('Completed %d %% of movement' % (100*(traj_ind+1)/len(TRAJECTORY_J1)))
         for motor_id in DXL_TOTAL:
-            dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+            dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
 
         dxl_goal_position = [TRAJECTORY_ORDERED[count,traj_ind] for count in range(0,len(DXL_TOTAL))]
         traj_ind += 1
     else:        # calculate goal positions for each motor
         for motor_id in DXL_TOTAL:
-            dxl_present_position[motor_id-1], dx_comm_result[motor_id-1], dx_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
+            dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR_PRO_PRESENT_POSITION)
         dxl_goal_position = dxl_present_position.copy()
         count = 0
         for motor_id in DXL_MOVE_ORDER:
