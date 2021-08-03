@@ -234,7 +234,7 @@ def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, g
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
-				
+
 	return dxl_present_position
 
 def dxl_read(DXL_IDS, packetHandler, groupBulkRead, read_ADDR, read_LEN):
@@ -278,11 +278,12 @@ def get_curr_volt(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
 	cur_lim = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT))
 	cur_pres = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT))
 	cur_goal = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT))
-	pwm_goal = dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM)
-	pwm_pres = dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM)
+	pwm_goal = pwm2pcnt(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM))
+	pwm_pres = pwm2pcnt(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM))
 	volt_pres = volt2Volts(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE))
 
-	print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, 'pwm_psnt:', pwm_pres, 'vlt_inpt: ', volt_pres, 'V')
+	print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
+	# print('cur_limt: 0.2%f A,  cur_psnt:  0.2%f A,  cur_goal: 0.2%f A, pwm_goal: 0.2%f %, pwm_psnt: 0.2%f %, vlt_inpt: 0.2%f V' % (cur_lim, cur_pres, cur_goal, pwm_goal, pwm_pres,  volt_pres))
 
 # get keyboard stroke based on mac or windows operating system
 def getch():
@@ -312,6 +313,12 @@ def curr2Amps(current_reading):
 	for i in range(0,len(amps)):
 		amps[i] = float(current_reading[i]*2.69/1000)
 	return amps
+
+def pwm2pcnt(pwm_reading):
+	pcnt = pwm_reading
+	for i in range(0,len(pcnt)):
+		pcnt[i] = float(pwm_reading[i]*0.113)
+	return pcnt
 
 def volt2Volts(voltage_reading):
 	volts = voltage_reading
