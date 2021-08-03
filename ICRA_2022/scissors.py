@@ -29,7 +29,7 @@ robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
 if DXL_on == True:
 	packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)
 
-	motor_pos = dxl_get_pos(motor_ids, packetHandler, groupBulkRead, ADDR, LEN)
+	motor_pos = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 
 if DXL_on == True:
 	# mount scissors
@@ -41,11 +41,11 @@ if DXL_on == True:
 			motor_pos[i] += rotate_right_angle
 		pres = 0 # !!! read pressure for each finger from sensors, outputs [palmar thumb, dorsal thumb, palmar pointer, palmar middle finger]
 		motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax
-	
+
 		# spread the two fingers so the scissors won't drop
 		# !!! change to multithread so fingers can move simultaneously?
 		while any(i <= threshold_suppert for i in pres[2::]):
-			keypress = getch()		
+			keypress = getch()
 			print('press y to move the fingers or press ESC to stop')
 			if keypress == chr(0x1b):
 				print('Escaped from grasping')
@@ -55,8 +55,8 @@ if DXL_on == True:
 					motor_pos[2] += rotate_support
 				if pres[3] < threshold_suppert:
 					motor_pos[4] += rotate_support
-				motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax	
-			pres = 0 # !!! measure pressure		
+				motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax
+			pres = 0 # !!! measure pressure
 
 	# open scissors
 	# !!! need to change this programming to also adjust distal joint so it doesn't open when thumb moves
@@ -88,5 +88,5 @@ if UR5_on == True:
 	if keypress == 'y':
 		robot.arm.move_ee_xyz(ee_xyz, wait=True)
 
-if DXL_on == True:	
+if DXL_on == True:
 	shut_down(packetHandler, portHandler, groupBulkRead, ADDR, LEN)

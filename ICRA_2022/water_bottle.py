@@ -62,7 +62,7 @@ robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
 
 packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)
 
-motor_pos = dxl_get_pos(motor_ids, packetHandler, groupBulkRead, ADDR, LEN)
+motor_pos = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 
 if UR5_on == True:
 	# UR5 arm go to start position
@@ -105,5 +105,5 @@ while True:
 		goal_pos[wrist_ind] += np.pi/2
 		# UR5 arm go to start position
 		robot.arm.set_jpos(goal_pos, wait=True)
-		
+
 shut_down(packetHandler, portHandler, groupBulkRead, ADDR, LEN)

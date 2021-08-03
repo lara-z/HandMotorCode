@@ -40,6 +40,8 @@ def initialize(DXL_TOTAL, com_num):
 		PRO_GOAL_CURRENT       = 102
 		PRO_PRESENT_CURRENT    = 126
 		PRO_GOAL_PWM           = 100
+		PRO_PRESENT_PWM        = 124
+		PRO_PRESENT_INPUT_VOLTAGE      = 144
 		PRO_HARDWARE_ERROR     = 70
 		PRO_DRIVE_MODE         = 10
 		PRO_VELOCITY_PROFILE   = 112
@@ -50,6 +52,7 @@ def initialize(DXL_TOTAL, com_num):
 		PRO_PRESENT_POSITION    = 4
 		PRO_CURRENT             = 2
 		PRO_PWM                 = 2
+		PRO_VOLT                = 2
 
 	# Protocol version
 	PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
@@ -164,7 +167,7 @@ def initialize(DXL_TOTAL, com_num):
 			quit()
 
 	# set initial goal position to current position
-	dxl_present_position = dxl_get_pos(DXL_TOTAL, packetHandler, groupBulkRead, ADDR, LEN)
+	dxl_present_position = dxl_read(DXL_TOTAL, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 	dxl_goal_position = dxl_present_position.copy()
 
 	return packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
@@ -224,17 +227,17 @@ def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, g
 
 	moving = True
 	while moving:
-		print('moving')
+		get_curr_volt(DXL_TOTAL, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
         # get present position
-		dxl_present_position = dxl_get_pos(DXL_TOTAL, packetHandler, groupBulkRead, ADDR, LEN)
+		dxl_present_position = dxl_read(DXL_TOTAL, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
-	print('***')
+				
 	return dxl_present_position
 
-def dxl_get_pos(DXL_IDS, packetHandler, groupBulkRead, ADDR, LEN):
+def dxl_read(DXL_IDS, packetHandler, groupBulkRead, read_ADDR, read_LEN):
 	# Bulkread present positions
 	dxl_comm_result = groupBulkRead.txRxPacket()
 	if dxl_comm_result != COMM_SUCCESS:
@@ -242,18 +245,44 @@ def dxl_get_pos(DXL_IDS, packetHandler, groupBulkRead, ADDR, LEN):
 
 	# Check if groupbulkread data is available
 	for motor_id in DXL_IDS:
-		dxl_getdata_result = groupBulkRead.isAvailable(motor_id, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+		dxl_getdata_result = groupBulkRead.isAvailable(motor_id, read_ADDR, read_LEN)
 		if dxl_getdata_result != True:
 			print("[ID:%03d] groupBulkRead getdata failed" % motor_id)
 			quit()
 
-	# Get present position value
-	motor_pos = [0]*len(DXL_IDS)
+	# Get value
+	read_value = [0]*len(DXL_IDS)
 	count = 0
 	for motor_id in DXL_IDS:
-		motor_pos[count] = groupBulkRead.getData(motor_id, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+		read_value[count] = groupBulkRead.getData(motor_id, read_ADDR, read_LEN)
 		count += 1
-	return motor_pos
+	return read_value
+
+def dxl_get_current(DXLS, portHandler, packetHandler, groupBulkRead, ADDR_read):
+	error_status = False
+	dxl_present_current = [0]*max(DXLS)
+	torque = [0]*max(DXLS)
+	for motor_id in DXLS:
+		# Read present current
+		dxl_present_current[motor_id-1], dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, motor_id, ADDR_read)
+		if dxl_comm_result != COMM_SUCCESS:
+			print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+		elif dxl_error != 0:
+			print("[ID:%-2d]: %s" % (motor_id, packetHandler.getRxPacketError(dxl_error)))
+			dxl_error_message, dxl_comm_result, dxl_error = packetHandler.read1ByteTxRx(portHandler, motor_id, ADDR.PRO_HARDWARE_ERROR)
+			error_status = True
+		dxl_present_current[motor_id-1] = min([dxl_present_current[motor_id-1], abs(65535 - dxl_present_current[motor_id-1])])
+	return dxl_present_current
+
+def get_curr_volt(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR, LEN):
+	cur_lim = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT))
+	cur_pres = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT))
+	cur_goal = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT))
+	pwm_goal = dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM)
+	pwm_pres = dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM)
+	volt_pres = volt2Volts(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE))
+
+	print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, 'pwm_psnt:', pwm_pres, 'vlt_inpt: ', volt_pres, 'V')
 
 # get keyboard stroke based on mac or windows operating system
 def getch():
@@ -277,3 +306,24 @@ def deg2pulse(deg):
     # converts from degrees of joint displacement to motor pulses
     ratio = 1
     return int(deg*(ratio/0.088))
+
+def curr2Amps(current_reading):
+	amps = current_reading
+	for i in range(0,len(amps)):
+		amps[i] = float(current_reading[i]*2.69/1000)
+	return amps
+
+def volt2Volts(voltage_reading):
+	volts = voltage_reading
+	for i in range(0,len(volts)):
+		volts[i] = float(voltage_reading[i]*0.1)
+	return volts
+
+def torque2current(torque):
+    # convert based on tau = Kt*I
+    current_amps = (torque*0.95 + 0.1775)
+    # convert to current units used by motor
+    return int(current_amps*1000/2.69)
+
+def current2torque(current_amps):
+    return float((current_amps - 0.1775)/0.95)

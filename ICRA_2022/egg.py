@@ -26,7 +26,7 @@ robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
 if DXL_on == True:
 	packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)
 
-	motor_pos = dxl_get_pos(motor_ids, packetHandler, groupBulkRead, ADDR, LEN)
+	motor_pos = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 
 # UR5 arm go to start position
 if UR5_on == True:

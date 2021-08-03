@@ -3,16 +3,14 @@ from utils import *
 COM_PORT = 'COM3'
 motor_id = [int(input('Enter the ID of the motor you would like to move:  '))]
 rotate_amount = deg2pulse(10) # !!! change value
-print(rotate_amount)
 
 packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_id, COM_PORT)
 
 def make_move(direction):
-	pres_position = dxl_get_pos(motor_id, packetHandler, groupBulkRead, ADDR, LEN)
+	pres_position = dxl_read(motor_id, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 	goal_position = [pres_position[0] + direction*rotate_amount]
-	print('starting move')
 	move(motor_id, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN)
-	print('finished move')
+	print('moved')
 
 print('Press \'c\' to change the motor id, \'f\' to flex, \'e\' to extend, or ESC to end')
 while True:
