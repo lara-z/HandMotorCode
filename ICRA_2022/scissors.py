@@ -24,7 +24,7 @@ cut_direction_index = 0 # axis (x, y, z) that the UR5 arm should move in to cut 
 
 # !!! make a function to adjust distal joint when proximal joint moves for a specified joint
 
-robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
+robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
 if DXL_on == True:
 	packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)

@@ -58,7 +58,7 @@ def adjust(pressure, thresh)
 		elif keypress == 'y':
 			motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update function syntax
 
-robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
+robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
 packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)
 

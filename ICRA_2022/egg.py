@@ -21,7 +21,7 @@ threshold = 10 # !!! update with appropriate threshold
 
 # !!! change to multithread so fingers can move simultaneously?
 
-robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
+robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
 if DXL_on == True:
 	packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)

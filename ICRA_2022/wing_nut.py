@@ -11,7 +11,7 @@ wrist_ind = 0
 rotate = np.pi*5/180
 threshold = 10 # !!! change based on sensor
 
-robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
+robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
 # go to start position
 robot.arm.set_jpos(start_pos, wait=True)

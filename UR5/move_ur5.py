@@ -3,9 +3,7 @@ def move_xyz(coords, method, time, Robot):
 	# coords is list of 3 coordinates
 	# method is 'urscript' or other text will just use moveit
 	# time and Robot are imported (Robot from airobot)
-    robot = Robot('ur5e_2f140',
-                  pb=False,
-                  use_cam=False)
+    robot = ar.Robot('ur5e', pb=False, use_cam=False)
     if method == 'urscript':
 	    robot.arm.set_comm_mode(use_urscript=True)
 	elif method == 'moveit':
@@ -14,7 +12,7 @@ def move_xyz(coords, method, time, Robot):
 
 def joint_pos(joint_coords, method, time, ar):
 	# 
-    robot = ar.Robot('ur5e_2f140', pb=False, use_cam=False)
+    robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
     goal_pos = joint_coords
 
