@@ -29,10 +29,6 @@ print(pos)
 
 print('')
 
-jpos = robot.arm.get_jpos()
-print('this is the robot'\'s current joint angle pose:')
-print(jpos)
-
 print('press \'m\' to move arm up by a small amount to location printed below or ESCAPE to pass')
 pos[2] += z_move
 print(pos)
@@ -41,10 +37,16 @@ if keypress == chr(0x1b):
 	print('Escaped from moving')
 elif keypress == 'm':
 	robot.arm.move_ee_xyz(pos, wait=True)
+
+jpos = robot.arm.get_jpos()
+print('this is the robot\'s current joint angle pose:')
+print(jpos)
 	
-print('press \'r\' to rotate the wrist by a small amount or ESCAPE to pass')
+print('press \'r\' to rotate the wrist by a small amount to location printed below or ESCAPE to pass')
+jpos[wrist_index] += wrist_move
+print(jpos)
+keypress = getch()
 if keypress == chr(0x1b):
 	print('Escaped from moving')
-elif keypress == 'm':
-	jpos[wrist_index] += wrist_move
+elif keypress == 'r':
 	robot.arm.set_jpos(jpos, wait=True)
