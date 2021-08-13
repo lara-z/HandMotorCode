@@ -3,6 +3,7 @@ from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 # initialize dynamixels
 # Set goal position as present position
 # Return a bunch of handles necessary to accessing dynamixels
+
 def initialize(DXL_TOTAL, com_num):
 	import os
 
