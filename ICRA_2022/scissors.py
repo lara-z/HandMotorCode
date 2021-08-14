@@ -8,7 +8,7 @@ import keyboard
 from utils import *
 
 UR5_on = True
-DXL_on = True
+DXL_on = False
 sensor_on = False
 COM_PORT = 'COM6' # !!! update
 num_fing = 3

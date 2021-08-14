@@ -9,7 +9,7 @@ from utils import *
 DXL_on = True
 sensor_on = False
 COM_PORT = 'COM6' # !!! update
-start_pos = [] # !!! find good start position
+start_pos = [] # !!! find good start position in joint coordinates
 wrist_ind = 0
 tilt_options = ['level', 'little', 'lots']
 tilt_thresh = [0, 10, 20] # !!! calibrate

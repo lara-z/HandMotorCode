@@ -19,9 +19,9 @@ def getch():
 		return ch
 
 robot = ar.Robot('ur5e', pb=False, use_cam=False)
-z_move = 0.05 # !!! verify number
-wrist_index = -1 # !!! verify number
-wrist_move = 0.1 # !!! verify number
+z_move = 0.05
+wrist_index = -1
+wrist_move = 0.1
 
 pos, quat, rot, euler = robot.arm.get_ee_pose()
 print('this is the robot\'s current Cartesian pose:')
@@ -37,6 +37,9 @@ if keypress == chr(0x1b):
 	print('Escaped from moving')
 elif keypress == 'm':
 	robot.arm.move_ee_xyz(pos, wait=True)
+	
+print('moved')
+print('')
 
 jpos = robot.arm.get_jpos()
 print('this is the robot\'s current joint angle pose:')

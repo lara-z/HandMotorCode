@@ -5,9 +5,9 @@ import numpy as np
 import keyboard
 from utils import *
 
-start_pos = [] # !!! find good start position
+start_pos = [] # !!! find good start position in joint coordinates
 goal_pos = start_pos
-wrist_ind = 0
+wrist_ind = -1
 rotate = np.pi*5/180
 threshold = 10 # !!! change based on sensor
 
