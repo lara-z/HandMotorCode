@@ -1,8 +1,8 @@
 from utils import *
 
-COM_PORT = 'COM3'
+COM_PORT = '/dev/ttyUSB0'
 motor_id = [int(input('Enter the ID of the motor you would like to move:  '))]
-rotate_amount = deg2pulse(10) # !!! change value
+rotate_amount = deg2pulse(20) # !!! change value
 
 packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_id, COM_PORT)
 

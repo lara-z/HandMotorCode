@@ -25,7 +25,7 @@ def initialize(DXL_TOTAL, com_num):
 
 	os.sys.path.append('../dynamixel_functions_py')             # Path setting
 
-	import keyboard
+	# import keyboard
 	import numpy as np
 
 	manual_control              = True
@@ -228,7 +228,7 @@ def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, g
 
 	moving = True
 	while moving:
-		get_curr_volt(DXL_TOTAL, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+		get_curr_volt(DXL_TOTAL, DXL_TOTAL[0], portHandler, packetHandler, groupBulkRead, ADDR, LEN)
         # get present position
 		dxl_present_position = dxl_read(DXL_TOTAL, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 
@@ -259,7 +259,7 @@ def dxl_read(DXL_IDS, packetHandler, groupBulkRead, read_ADDR, read_LEN):
 		count += 1
 	return read_value
 
-def dxl_get_current(DXLS, portHandler, packetHandler, groupBulkRead, ADDR_read):
+def dxl_get_current(DXLS, portHandler, packetHandler, groupBulkRead, ADDR_read, ADDR):
 	error_status = False
 	dxl_present_current = [0]*max(DXLS)
 	torque = [0]*max(DXLS)
@@ -275,16 +275,16 @@ def dxl_get_current(DXLS, portHandler, packetHandler, groupBulkRead, ADDR_read):
 		dxl_present_current[motor_id-1] = min([dxl_present_current[motor_id-1], abs(65535 - dxl_present_current[motor_id-1])])
 	return dxl_present_current
 
-def get_curr_volt(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR, LEN):
-	cur_lim = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT))
-	cur_pres = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT))
-	cur_goal = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT))
-	pwm_goal = pwm2pcnt(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM))
-	pwm_pres = pwm2pcnt(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM))
-	volt_pres = volt2Volts(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE))
+def get_curr_volt(DXL_IDS, print_motor_id, portHandler, packetHandler, groupBulkRead, ADDR, LEN):
+	cur_lim = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT, ADDR))
+	cur_pres = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT, ADDR))
+	cur_goal = curr2Amps(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT, ADDR))
+	pwm_goal = pwm2pcnt(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM, ADDR))
+	pwm_pres = pwm2pcnt(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM, ADDR))
+	volt_pres = volt2Volts(dxl_get_current(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE, ADDR))
 
-	print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
-	# print('cur_limt: 0.2%f A,  cur_psnt:  0.2%f A,  cur_goal: 0.2%f A, pwm_goal: 0.2%f %, pwm_psnt: 0.2%f %, vlt_inpt: 0.2%f V' % (cur_lim, cur_pres, cur_goal, pwm_goal, pwm_pres,  volt_pres))
+	# print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
+	print('cur_limt: %0.2f A,  cur_psnt:  %0.2f A,  cur_goal: %0.2f A, pwm_goal: %0.2f %%, pwm_psnt: %0.2f %%, vlt_inpt: %0.2f V' % (cur_lim[print_motor_id-1], cur_pres[print_motor_id-1], cur_goal[print_motor_id-1], pwm_goal[print_motor_id-1], pwm_pres[print_motor_id-1],  volt_pres[print_motor_id-1]))
 
 # get keyboard stroke based on mac or windows operating system
 def getch():

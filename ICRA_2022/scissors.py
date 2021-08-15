@@ -6,12 +6,15 @@ from airobot import Robot
 import numpy as np
 import keyboard
 from utils import *
+from utils_sensor import *
 
 UR5_on = True
 DXL_on = False
 sensor_on = False
+visualize = False
 COM_PORT = 'COM6' # !!! update
 num_fing = 3
+t_data = 0.5 # during for pressure reading
 motor_ids = [] # !!! [prox thumb joint, dist thumb joint, prox pointer joint, dist pointer joint, prox middle finger joint, dist middle finger joint]
 rotate_right_angle = 10 # !!! update with correct number, amount to rotate distal joints 90 degrees
 rotate_support = 1 # !!! update with correct number
@@ -24,12 +27,12 @@ cut_direction_index = 0 # axis (x, y, z) that the UR5 arm should move in to cut 
 
 # !!! make a function to adjust distal joint when proximal joint moves for a specified joint
 
+# initialize everything
 robot = ar.Robot('ur5e', pb=False, use_cam=False)
-
 if DXL_on == True:
-	packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)
-
-	motor_pos = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+	packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_ids, COM_PORT)
+	motor_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+args, ser, p_zero, f_zero = initialize_sensor(COM_PORT, visualize)
 
 if DXL_on == True:
 	# mount scissors
@@ -37,7 +40,7 @@ if DXL_on == True:
 	keypress = getch()
 	if keypress == 'm':
 		# close distal joints
-		for i in range(1,len(motor_pos),2)
+		for i in range(1,len(motor_pos),2):
 			motor_pos[i] += rotate_right_angle
 		pres = 0 # !!! read pressure for each finger from sensors, outputs [palmar thumb, dorsal thumb, palmar pointer, palmar middle finger]
 		motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax
@@ -71,7 +74,7 @@ if UR5_on == True:
 if DXL_on == True:
 	# close scissors
 	# !!! need to change this programming to also adjust distal joint so it doesn't open when thumb moves
-	while pres[0] < threshold_closed
+	while pres[0] < threshold_closed:
 		keypress = getch()
 		print('press y to move the fingers or press ESC to stop')
 		if keypress == chr(0x1b):

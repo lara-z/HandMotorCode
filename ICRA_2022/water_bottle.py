@@ -5,9 +5,12 @@ import airobot as ar
 from airobot import Robot
 import numpy as np
 from utils import *
+from utils_sensor import *
 
+UR5_on = False
 DXL_on = True
 sensor_on = False
+visualize = False
 COM_PORT = 'COM6' # !!! update
 start_pos = [] # !!! find good start position in joint coordinates
 wrist_ind = 0
@@ -17,6 +20,7 @@ tilt_num = int(input('Enter tilt integer from 0 (level) to 2 (very tilted)'))
 threshold = tilt_thresh[tilt_num]
 grasp_threshold = 10 # !!! change to real value
 num_fing = 3
+t_data = 0.5 # during for pressure reading
 motor_ids = [] #!!! add motor ids
 grasp_rotate_amount = 10 # !!! change to real value
 rotate_amount = 10 # !!! change to real value
@@ -31,7 +35,7 @@ def calc_pres():
 	pressure[2] -= pressure[0]
 	return pres
 
-def adjust(pressure, thresh)
+def adjust(pressure, thresh):
 	# might need to make the pressure difference a percentage of pressure: as liquid leaves the bottle...
 	while abs(pressure[1] - pressure[2]) <= thresh:
 		if pressure[1] <= pressure[2]:
@@ -58,11 +62,11 @@ def adjust(pressure, thresh)
 		elif keypress == 'y':
 			motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update function syntax
 
+# initialize everything
 robot = ar.Robot('ur5e', pb=False, use_cam=False)
-
-packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_TOTAL, COM_PORT)
-
-motor_pos = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_ids, COM_PORT)
+motor_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+args, ser, p_zero, f_zero = initialize_sensor(COM_PORT, visualize)
 
 if UR5_on == True:
 	# UR5 arm go to start position
@@ -75,9 +79,9 @@ while any(i <= grasp_threshold for i in pres[1::]):
 	keypress = getch()
 	print('press y to move the fingers or press ESC to stop')
 	if keypress == chr(0x1b):
-        print('Escaped from grasping')
-        break
-    elif keypress == 'y':
+		print('Escaped from grasping')
+		break
+	elif keypress == 'y':
 		for i in range(1,len(motor_pos)):
 			# change only the bottom two fingers for the grasp: the top one should stay
 			if pres[i] <= grasp_threshold:
@@ -92,8 +96,8 @@ while True:
 	keypress = getch()
 	print('press ESC to end code, c to change tilt level, p to pour, or v to rotate the bottle to vertical')
 	if keypress == chr(0x1b):
-        break
-    elif keypress == 'c':
+		break
+	elif keypress == 'c':
     	# change desired tilt
 		tilt_num = input(int('Enter tilt integer from 0 (level) to 2 (very tilted):  '))
 		threshold = tilt_thresh[tilt_num]
