@@ -1,7 +1,7 @@
 from utils_sensor import *
-t_data = 0.5
+t_data = 0.4
 visualize = False
-args, ser, p_zero, f_zero = initialize_sensor('/dev/ttyUSB0', visualize, t_data)
+args, ser, p_zero, f_zero = initialize_sensor('/dev/ttyUSB1', visualize, t_data)
 while True:
     read_pres(p_zero, f_zero, t_data, args, ser)
 

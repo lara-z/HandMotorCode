@@ -9,26 +9,28 @@ def getData(args, ser, length=None):
     if length is None:
         input_string = ser.readline()
         input_string = input_string.decode('utf-8')
-        return input_string.rstrip('\n')
+        # print(input_string)
+        # print(input_string.rstrip('\n'))
+        # return input_string.rstrip('\n')
+        return 'w'
     else:
         input_string = ser.read(length)
         x = np.frombuffer(input_string, dtype=np.uint8).astype(np.int)
         x = x[0::2] * 32 + x[1::2]
         if x.shape[0] != dimx * dimy:
             print("only get %d, use previously stored data" % x.shape[0])
-            print(x)
             return 'w'
         x = x.reshape(dimy, dimx).transpose(1, 0)
         return x
 
 def sendData(args, ser, serial_data):
-    while(getData(args, ser)[0] != 'w'):
+    while getData(args, ser) != 'w':
         pass
     serial_data = str(serial_data).encode('utf-8')
     ser.write(serial_data)
     return ser, serial_data
 
-def initialize_sensor(sensor_port, visualize, t_data):
+def initialize_sensor(sensor_port, visualize):
     import datetime
     import struct
     import serial
@@ -61,20 +63,26 @@ def initialize_sensor(sensor_port, visualize, t_data):
     f_zero = 0
 
     # get initial pressure reading to calibrate sensor value
-    p_zero, _, f_zero = read_pres(p_zero, f_zero, 3*t_data, args, ser)
+    p_zero, _, f_zero = read_pres(p_zero, f_zero, args, ser, initializing = True)
     print('Sensor initialized')
 
     return args, ser, p_zero, f_zero
 
-def read_pres(p_zero, f_zero, t_data, args, ser):
+def read_pres(p_zero, f_zero, args, ser, initializing=False):
     # read pressure from the sensor once the sensor has been initialized
     mean_press = 0
     max_press = 0
     force = 0
 
+    # take an average reading over time to calibrate zero pressure when initializing
+    if initializing == True:
+        count_limit = 10
+    else:
+        count_limit = 1
+
     st_time = time.time()
     count = 0
-    while (time.time() - st_time) < t_data:
+    while count < count_limit:
         # take the average reading for during duration of time t_data
         ser, _= sendData(args, ser, 'a')
         # time.sleep(0.01)

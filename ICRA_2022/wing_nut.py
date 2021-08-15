@@ -25,7 +25,7 @@ robot.arm.set_jpos(start_pos, wait=True)
 # read max or average pressure
  # !!! put in sensor reading
 if sensor_on == True:
-	_, pres, _ = read_pres(visualize, p_zero, f_zero, args, ser)
+	_, pres, _ = read_pres(p_zero, f_zero, t_data, args, ser)
 else:
 	pres = 0
 
