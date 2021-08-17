@@ -6,15 +6,17 @@ import numpy as np
 from utils_sensor import *
 
 def check_pressure():
-	_, pres, _ = read_pres(p_zero, f_zero, args, ser)
-	if pres > thresh_tight:
+	_, pres, force = read_pres(p_zero, f_zero, args, ser)
+	if pres >= thresh_tight or force >= force_tight:
 		tightening = False
+		print('detected screw has been tightened')
 	else:
 		tightening = True
 	return tightening
 	
 
-COM_PORT = '/dev/ttyUSB1'
+# check port using:    python -m serial.tools.list_ports
+COM_PORT = '/dev/ttyUSB0'
 
 sensor_on = False
 visualize = False
@@ -23,25 +25,32 @@ t_data = 0.3 # during for pressure reading
 wrist_ind = -1
 rotate = np.pi*30/180
 thresh_contact = 5 # threshold that there is contact
-thresh_tight = 200 # threshold that nut is tight
+thresh_tight = 49 # threshold that nut is tight
+force_tight = 1048
 ang_min = -np.pi/2 # must be more than -pi
-rotate_reset = np.pi
+rotate_reset = 1.3*np.pi
 ang_max = ang_min + rotate_reset # must be less than +pi
 z_ind = 2 # index for z-axis
-z_lift = 0.15 # vertical lift in meters
-start_pos = [-1.2077434698687952, -2.5244132481017054, -1.352097511291504, -0.8730543416789551, 1.5568766593933105, ang_min]
+z_lift_initial = 0.15 # vertical lift in meters
+z_lift = 0.05 # vertical lift in meters
+start_pos = [-1.209855858479635, -2.317681451837057, -1.3150320053100586, -1.081174687748291, 1.5712666511535645, ang_min]
+screw_pos = [-1.2097957769977015, -2.5426417789854945, -1.3618993759155273, -0.8092869085124512, 1.5712904930114746, ang_min]
 move = False
 tightening = True
 
 robot = ar.Robot('ur5e', pb=False, use_cam=False)
+
+# set start position and calibrate the sensor
+robot.arm.set_jpos(start_pos, wait=True)
+time.sleep(1.0)
 args, ser, p_zero, f_zero = initialize_sensor(COM_PORT, visualize)
 
-# set start position
-robot.arm.set_jpos(start_pos, wait=True)
-goal_pos = start_pos
-pos, quat, rot, euler = robot.arm.get_ee_pose()
-rot = np.round(rot)
-robot.arm.set_ee_pose(ori=rot, wait=True)
+# lower to screw
+ee_xyz = [0]*3
+ee_xyz[z_ind] = -z_lift_initial
+robot.arm.move_ee_xyz(ee_xyz, wait=True)
+time.sleep(1.0)
+goal_pos = robot.arm.get_jpos()
 
 _, pres, _ = read_pres(p_zero, f_zero, args, ser)
 
@@ -50,8 +59,8 @@ while tightening:
 	# motion to tighten screw until wrist limit is reached
 	print('tightening screw')
 	while goal_pos[wrist_ind] <= (ang_max - rotate):
+	# while goal_pos[wrist_ind] >= (ang_max + rotate):
 		tightening = check_pressure()
-		print(tightening)
 		if tightening == False:
 			break
 		goal_pos[wrist_ind] += rotate
