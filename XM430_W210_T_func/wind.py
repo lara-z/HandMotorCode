@@ -19,188 +19,50 @@
 ################################################################################
 
 
-import os
-
-if os.name == 'nt':
-    import msvcrt
-    def getch():
-        return msvcrt.getch().decode()
-else:
-    import sys, tty, termios
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    def getch():
-        try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
-os.sys.path.append('../dynamixel_functions_py')             # Path setting
-
-# import dynamixel_functions as dynamixel                     # Uses DYNAMIXEL SDK library
-from dynamixel_sdk import *                    # Uses Dynamixel SDK library
-import keyboard
 from conversions import *
 
-# Control table address
-ADDR_OPERATING_MODE         = 11
-ADDR_PRO_TORQUE_ENABLE      = 64               # Control table address is different in Dynamixel model
-ADDR_PRO_GOAL_POSITION      = 116
-ADDR_PRO_PRESENT_POSITION   = 132
-ADDR_PRO_GOAL_CURRENT       = 38
-ADDR_PRO_PRESENT_CURRENT    = 126
+com_num = '/dev/ttyUSB0'
 
-# Protocol version
-PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
+# comment out one of the lines below to change operating mode
+operating_mode = 'current_position' # current-based position control
+# operating_mode = 'extended_position'
 
-# Default setting
-DXL_ID                      = int(input("What is the ID of this dynamixel motor?  "))
-BAUDRATE                    = 1000000           # Dynamixel default baudrate : 57600
-DEVICENAME                  = 'COM3'            # Check which port is being used on your controller
-OPERATION_MODE              = 0x02
-EXT_POSITION_CONTROL_MODE   = 4                 # Value for extended position control mode (operating mode)
-TORQUE_ENABLE               = 1                 # Value for enabling the torque
-TORQUE_DISABLE              = 0                 # Value for disabling the torque
-DXL_START_POSITION_VALUE    = 0                 # Dynamixel will rotate between this value
-ROTATE_AMOUNT               = 100
-DXL_MOVING_STATUS_THRESHOLD = 40                # Dynamixel moving status threshold
+# specify current goal and limit if using current-based position control
+current_limit = amps2Curr(3.0) # input the number of amps and it will convert to motor units
+current_goal = amps2Curr(1.0) # input the goal number of amps
 
-index = 1
+motor_id = [int(input('What is the ID of the motor you would like to control?  '))]
+ROTATE_AMOUNT = deg2pulse(10) # the increment in degrees (converted to motor pulse units) you would like the motor to move
 
-# Initialize PortHandler instance
-# Set the port path
-# Get methods and members of PortHandlerLinux or PortHandlerWindows
-portHandler = PortHandler(DEVICENAME)
-# Initialize PacketHandler instance
-# Set the protocol version
-# Get methods and members of Protocol1PacketHandler or Protocol2PacketHandler
-packetHandler = PacketHandler(PROTOCOL_VERSION)
-
-# Open port
-if portHandler.openPort():
-    print("Succeeded to open the port")
+if operating_mode == 'extended_position':
+    dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_id, com_num, operating_mode)
+elif operating_mode == 'current_position':
+    dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_id, com_num, operating_mode, current_goal, current_limit)
 else:
-    print("Failed to open the port")
-    print("Press any key to terminate...")
-    getch()
-    quit()
-
-# Set port baudrate
-if portHandler.setBaudRate(BAUDRATE):
-    print("Succeeded to change the baudrate")
-else:
-    print("Failed to change the baudrate")
-    print("Press any key to terminate...")
-    getch()
-    quit()
-
-# Set operating mode to extended position control mode
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_OPERATING_MODE, EXT_POSITION_CONTROL_MODE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-else:
-    print("Operating mode changed to extended position control mode.")
-
-# Enable Dynamixel Torque
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-else:
-    print("Dynamixel has been successfully connected")
-
-print("*********")
-dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_POSITION)
-dxl_goal_position = [dxl_present_position, dxl_present_position]            # Goal position
-
+    print('invalid operating mode')
 print('Press "w" to wind the motor, "u" to unwind the motor, or ESC to exit')
 
 while 1:
-    if getch() == chr(0x1b):
+    # get command from keypress
+    keypress = getch()
+    if keypress == chr(0x1b):
         break
-    elif keyboard.is_pressed('w'):
+    elif keypress == 'w':
         direction = 1
-    elif keyboard.is_pressed('u'):
+    elif keypress == 'u':
         direction = -1
     else:
         direction = 0
 
     # write new goal position
-    new_goal  = (dxl_goal_position[1] + direction*ROTATE_AMOUNT)
-    dxl_goal_position = [dxl_goal_position[1], new_goal]
+    dxl_goal_position[0] += direction*ROTATE_AMOUNT
 
-    # Write goal position
-    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_POSITION, dxl_goal_position[index])
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    # move motor
+    dxl_present_position = move(motor_id, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN)
 
-    print('start move')
-    while 1:
+    # print current and voltage readings
+    print_curr_volt(motor_id, 0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
 
-        # Read present position
-        dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_POSITION)
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % packetHandler.getRxPacketError(dxl_error))
+    print('Moved. Press "w" to wind the motor, "u" to unwind the motor, or ESC to exit')
 
-        # print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (DXL_ID, dxl_goal_position[index], dxl_present_position))
-
-
-        # Read present current
-        dxl_present_current, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_CURRENT)
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % packetHandler.getRxPacketError(dxl_error))
-        # Read goal current
-        dxl_goal_current, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_CURRENT)
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-        torque = current2torque(curr2Amps(dxl_present_current))
-        # print(torque)
-        # print("[ID:%03d] PresCurrent:%03d, GoalCurrent:%03d" % (DXL_ID, dxl_present_current, dxl_goal_current))
-        print("[ID:%02d] PresTorque:%8.2f, PresCurrent:%8.2f, GoalCurrent:%03d" % (DXL_ID, torque, curr2Amps(dxl_present_current), curr2Amps(dxl_goal_current)))
-        # print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (DXL_ID, dxl_goal_position[index], dxl_present_position))
-
-        if not abs(dxl_goal_position[index] - dxl_present_position) > DXL_MOVING_STATUS_THRESHOLD:
-            break
-            # QUESTION:
-    # print('upon finishing motion:')
-    # Read present current
-    dxl_present_current, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_CURRENT)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-    # Read goal current
-    dxl_goal_current, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_CURRENT)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-    torque = (dxl_present_current/1000 - 0.1775)/0.95
-    # print("[ID:%03d] PresCurrent:%03d, GoalCurrent:%03d" % (DXL_ID, dxl_present_current, dxl_goal_current))
-
-
-# Disable Dynamixel Torque
-dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-elif dxl_error != 0:
-    print("%s" % packetHandler.getRxPacketError(dxl_error))
-print("torque disabled")
-
-# Close port
-portHandler.closePort()
+shut_down(motor_id, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
