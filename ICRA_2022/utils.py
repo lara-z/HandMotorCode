@@ -358,6 +358,12 @@ def curr2Amps(current_reading):
 		amps[i] = float(current_reading[i]*2.69/1000)
 	return amps
 
+def amps2Curr(current_amps):
+	current = current_amps
+	# for i in range(0,len(current)):
+	current = int(current_amps*1000/2.69)
+	return current
+
 def pwm2pcnt(pwm_reading):
 	pcnt = pwm_reading
 	for i in range(0,len(pcnt)):
