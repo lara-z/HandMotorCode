@@ -6,12 +6,11 @@ import numpy as np
 from utils_sensor import *
 
 def check_pressure():
-	_, pres, force = read_pres(p_zero, f_zero, args, ser, read_pts)
-	if ((pres >= thresh_tight) or (force >= force_tight)):
+	_, pres, force = read_pres(p_zero, f_zero, args, ser)
+	if pres >= thresh_tight or force >= force_tight:
 		tightening = False
-		print('detected that screw has been tightened')
+		print('detected screw has been tightened')
 	else:
-		print('checked pressure')
 		tightening = True
 	return tightening
 	
@@ -21,17 +20,13 @@ COM_PORT = '/dev/ttyUSB0'
 
 sensor_on = False
 visualize = False
-class read_pts:	# indices of points to be read
-    x_start = 0
-    x_end = 3
-    y_start = 28
-    y_end = 32
+t_data = 0.3 # during for pressure reading
 
 wrist_ind = -1
 rotate = np.pi*30/180
 thresh_contact = 5 # threshold that there is contact
 thresh_tight = 49 # threshold that nut is tight
-force_tight = 60
+force_tight = 1048
 ang_min = -np.pi/2 # must be more than -pi
 rotate_reset = 1.3*np.pi
 ang_max = ang_min + rotate_reset # must be less than +pi
@@ -48,7 +43,7 @@ robot = ar.Robot('ur5e', pb=False, use_cam=False)
 # set start position and calibrate the sensor
 robot.arm.set_jpos(start_pos, wait=True)
 time.sleep(1.0)
-args, ser, p_zero, f_zero = initialize_sensor(COM_PORT, visualize, read_pts)
+args, ser, p_zero, f_zero = initialize_sensor(COM_PORT, visualize)
 
 # lower to screw
 ee_xyz = [0]*3
@@ -57,7 +52,7 @@ robot.arm.move_ee_xyz(ee_xyz, wait=True)
 time.sleep(1.0)
 goal_pos = robot.arm.get_jpos()
 
-_, pres, _ = read_pres(p_zero, f_zero, args, ser, read_pts)
+_, pres, _ = read_pres(p_zero, f_zero, args, ser)
 
 # keep tightening screw until tightness is achieved
 while tightening:
@@ -70,10 +65,7 @@ while tightening:
 			break
 		goal_pos[wrist_ind] += rotate
 		robot.arm.set_jpos(goal_pos, wait=True)
-		time.sleep(0.4)
-		tightening = check_pressure()
-		if tightening == False:
-			break
+		_, pres, _ = read_pres(p_zero, f_zero, args, ser)
 
 	# lift arm
 	print('lifting arm')
@@ -82,6 +74,7 @@ while tightening:
 	ee_xyz[z_ind] = z_lift
 	robot.arm.move_ee_xyz(ee_xyz, wait=True)
 
+	check_pressure()
 	if tightening == False:
 		break
 	else:
@@ -93,6 +86,10 @@ while tightening:
 		goal_pos[wrist_ind] = ang_min
 		robot.arm.set_jpos(goal_pos, wait=True)
 
+	check_pressure()
+	if tightening == False:
+		break
+	else:
 		time.sleep(1.0)
 
 		# lower arm
@@ -101,11 +98,15 @@ while tightening:
 		ee_xyz[z_ind] = -z_lift
 		robot.arm.move_ee_xyz(ee_xyz, wait=True)
 
+	check_pressure()
+	if tightening == False:
+		break
+	else:
 		time.sleep(1.0)
 
 		# read position and pressure
 		goal_pos = robot.arm.get_jpos()
-		_, pres, _ = read_pres(p_zero, f_zero, args, ser, read_pts)
+		_, pres, _ = read_pres(p_zero, f_zero, args, ser)
 	
 print('The screw has been tightened')
 
