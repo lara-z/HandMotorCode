@@ -5,7 +5,7 @@ import numpy as np
 # Set goal position as present position
 # Return a bunch of handles necessary to accessing dynamixels
 
-def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_LIMIT=[1193]):
+def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_LIMIT=[1193]):
 	# operating_mode accepts two inputs: current_position, extended_position
 
 	os.sys.path.append('../dynamixel_functions_py')             # Path setting
@@ -97,7 +97,7 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 	# set up motors
 	setup = [0]*7
 	# Set operating mode to current-based position control mode
-	for motor_id in DXL_TOTAL:
+	for motor_id in DXL_IDS:
 		if operating_mode == 'extended_position':
 			dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.OPERATING_MODE, EXT_POSITION_CONTROL_MODE)
 		elif operating_mode == 'current_position':
@@ -109,20 +109,20 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 		else:
 			setup[0] +=1
 
-	if setup[0] == len(DXL_TOTAL):
+	if setup[0] == len(DXL_IDS):
 		if operating_mode == 'extended_position':
 			print("All dynamixel operating modes have been successfully changed to extended position control")
 		elif operating_mode == 'current_position':
 			print("All dynamixel operating modes have been successfully changed to current-based position control")
 	else:
 		print('Error(s) encountered. Shutting down motors...')
-		shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
 		print('PLEASE RE-RUN CODE. The motor error should now be fixed (torque has been turned off)')
 		quit()
 
 	if operating_mode == 'current_position':
 		# Set current limit
-		for motor_id in DXL_TOTAL:
+		for motor_id in DXL_IDS:
 			dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, motor_id, ADDR.PRO_CURRENT_LIMIT, CURRENT_LIMIT)
 			if dxl_comm_result != COMM_SUCCESS:
 				print("ID%d %s" % (motor_id, packetHandler.getTxRxResult(dxl_comm_result)))
@@ -131,11 +131,11 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 			else:
 				setup[1] +=1
 
-		if setup[1] == len(DXL_TOTAL):
+		if setup[1] == len(DXL_IDS):
 			print("All dynamixel current limit has been successfully changed")
 
 		# Set desired current
-		for motor_id in DXL_TOTAL:
+		for motor_id in DXL_IDS:
 			dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, motor_id, ADDR.PRO_GOAL_CURRENT, DESIRED_CURRENT)
 			if dxl_comm_result != COMM_SUCCESS:
 				print("ID%d %s" % (motor_id, packetHandler.getTxRxResult(dxl_comm_result)))
@@ -144,11 +144,11 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 			else:
 				setup[2] +=1
 
-		if setup[2] == len(DXL_TOTAL):
+		if setup[2] == len(DXL_IDS):
 			print("All dynamixel goal current values have been successfully changed")
 
 		# Set desired PWM
-		for motor_id in DXL_TOTAL:
+		for motor_id in DXL_IDS:
 			dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, motor_id, ADDR.PRO_GOAL_PWM, DESIRED_PWM)
 			if dxl_comm_result != COMM_SUCCESS:
 				print("ID%d %s" % (motor_id, packetHandler.getTxRxResult(dxl_comm_result)))
@@ -157,11 +157,11 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 			else:
 				setup[3] +=1
 
-		if setup[3] == len(DXL_TOTAL):
+		if setup[3] == len(DXL_IDS):
 			print("All dynamixel goal PWM values have been successfully changed")
 
 		# Set drive mode
-		for motor_id in DXL_TOTAL:
+		for motor_id in DXL_IDS:
 			dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_DRIVE_MODE, VELOCITY_BASED_PROFILE)
 			if dxl_comm_result != COMM_SUCCESS:
 				print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
@@ -170,11 +170,11 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 			else:
 				setup[4] +=1
 
-		if setup[4] == len(DXL_TOTAL):
+		if setup[4] == len(DXL_IDS):
 			print("All dynamixel drive modes have been successfully changed to velocity-based")
 
 	# Enable Torque
-	for motor_id in DXL_TOTAL:
+	for motor_id in DXL_IDS:
 		dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_TORQUE_ENABLE, TORQUE_ENABLE)
 		if dxl_comm_result != COMM_SUCCESS:
 			print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
@@ -183,28 +183,28 @@ def initialize(DXL_TOTAL, com_num, operating_mode, DESIRED_CURRENT=[500], CURREN
 		else:
 			setup[5] +=1
 
-	if setup[5] == len(DXL_TOTAL):
+	if setup[5] == len(DXL_IDS):
 		print("All dynamixels now have torque enabled")
 
 	# Add parameter storage for present position
-	for motor_id in DXL_TOTAL:
+	for motor_id in DXL_IDS:
 		dxl_addparam_result = groupBulkRead.addParam(motor_id, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 		if dxl_addparam_result != True:
 			print("[ID:%03d] groupBulkRead addparam failed" % motor_id)
 			quit()
 
 	# set initial goal position to current position
-	dxl_present_position = [0]*max(DXL_TOTAL)
-	dxl_comm_result = [0]*max(DXL_TOTAL)
-	dxl_error = [0]*max(DXL_TOTAL)
-	dxl_goal_position =  [0]*max(DXL_TOTAL)
-	for motor_id in DXL_TOTAL:
+	dxl_present_position = [0]*max(DXL_IDS)
+	dxl_comm_result = [0]*max(DXL_IDS)
+	dxl_error = [0]*max(DXL_IDS)
+	dxl_goal_position =  [0]*max(DXL_IDS)
+	for motor_id in DXL_IDS:
 		dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR.PRO_PRESENT_POSITION)
 	dxl_goal_position = dxl_present_position.copy()
 
 	return dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
 
-def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=True):
+def shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=True):
 	TORQUE_DISABLE = 0                 # Value for disabling the torque
 
 	# Clear bulkread parameter storage
@@ -217,7 +217,7 @@ def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN, a
 		keypress = 'y'
 
 	if keypress == 'y':
-		for motor_id in DXL_TOTAL:
+		for motor_id in DXL_IDS:
 			dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_TORQUE_ENABLE, TORQUE_DISABLE)
 			if dxl_comm_result != COMM_SUCCESS:
 				print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
@@ -230,15 +230,15 @@ def shut_down(DXL_TOTAL, packetHandler, portHandler, groupBulkRead, ADDR, LEN, a
 	# Close port
 	portHandler.closePort()
 
-def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
+def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
 	# will line 249 error with DXL_LOBYTE, etc.?
     # move the finger to a goal position that's defined in the code
 
 	DXL_MOVING_STATUS_THRESHOLD = 5                # Dynamixel moving status threshold
 
-	param_goal_position = [0]*len(DXL_TOTAL)
+	param_goal_position = [0]*len(DXL_IDS)
 	count = 0
-	for motor_id in DXL_TOTAL:
+	for motor_id in DXL_IDS:
 		# Allocate goal position value into byte array
 		param_goal_position[count] = [DXL_LOBYTE(DXL_LOWORD(goal_position[count])), DXL_HIBYTE(DXL_LOWORD(goal_position[count])), DXL_LOBYTE(DXL_HIWORD(goal_position[count])), DXL_HIBYTE(DXL_HIWORD(goal_position[count]))]
 
@@ -257,15 +257,29 @@ def move(DXL_TOTAL, goal_position, packetHandler, portHandler, groupBulkWrite, g
     # Clear bulkwrite parameter storage
 	groupBulkWrite.clearParam()
 
+	tries = 0
 	moving = True
 	while moving:
-		get_curr_volt(DXL_TOTAL, DXL_TOTAL[0], portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+		print_curr_volt(DXL_IDS, DXL_IDS[0], portHandler, packetHandler, groupBulkRead, ADDR, LEN)
         # get present position
-		dxl_present_position = dxl_read(DXL_TOTAL, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+		dxl_present_position = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
+		
+		if tries > 30:
+			moving = False
+			print('The motor is unable to achieve the desired position ')
+
+		tries += 1
+
+	if tries > 30:
+		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+
+	if tries > max_tries:
+		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+		print('The motors have been shut down')
 
 	return dxl_present_position
 
