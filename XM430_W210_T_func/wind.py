@@ -28,8 +28,8 @@ operating_mode = 'current_position' # current-based position control
 # operating_mode = 'extended_position'
 
 # specify current goal and limit if using current-based position control
-current_limit = amps2Curr(3.0) # input the number of amps and it will convert to motor units
-current_goal = amps2Curr(1.0) # input the goal number of amps
+current_limit = amps2curr(3.0) # input the number of amps and it will convert to motor units
+current_goal = amps2curr(1.0) # input the goal number of amps
 
 motor_id = [int(input('What is the ID of the motor you would like to control?  '))]
 ROTATE_AMOUNT = deg2pulse(10) # the increment in degrees (converted to motor pulse units) you would like the motor to move
@@ -64,5 +64,6 @@ while 1:
     print_curr_volt(motor_id, 0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
 
     print('Moved. Press "w" to wind the motor, "u" to unwind the motor, or ESC to exit')
+    print('')
 
 shut_down(motor_id, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
