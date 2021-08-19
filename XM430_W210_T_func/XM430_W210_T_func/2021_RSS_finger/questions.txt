@@ -1,0 +1,13 @@
+
+* why does the program sometimes not realize that the cable is at tension and keeps in while loop without exiting it?
+* why does the program sometimes seem to finish executing motion from keyboard command but won't take next keyboard command?
+* why will the finger sometimes be sitting torqued and not moving and sometimes after a minute that way, it will randomly throw an error and release all torque? it's stuck in the "while moving" loop in the move function, but why?
+* when the finger nears the 90 angle, why does it sometimes get stuck moving back up? it can't lift itself back up very well, even if tipped sideways so gravity doesn't have an effect. does it overloosen the cables? but if it does, shouldn't that be fixed by the cables tensioning themselves at the end of every movement?
+* it almost seems like the motor doesn't move a reliable amount
+
+posted on github:
+* how do you check hardware error status? when the program exits and I open it in R+Manager, error is zero, also don't know how to print it out directly from code (whatever basic thing I tried produced nothing)
+hardware error status: https://github.com/ROBOTIS-GIT/dynamixel-workbench/issues/333
+
+
+current readings: https://github.com/ROBOTIS-GIT/dynamixel-workbench/issues/334
