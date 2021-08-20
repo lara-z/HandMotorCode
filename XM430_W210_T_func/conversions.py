@@ -462,7 +462,7 @@ def volt2volts(voltage_reading):
 	return volts
 
 def torque2current(torque):
-    # convert based on tau = Kt*I
+    # convert based on tau = Kt*I from spec sheet
     current_amps = (torque*0.95 + 0.1775)
     # convert to current units used by motor
     return int(current_amps*1000/2.69)
