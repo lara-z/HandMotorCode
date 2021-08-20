@@ -261,11 +261,18 @@ def calc_torque(DXLS, ifprint, packetHandler, portHandler, groupBulkWrite, group
         print(measurements)
     return torque, dxl_present_current, error_status
 
-def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
+def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, limits=False):
 	# will line 249 error with DXL_LOBYTE, etc.?
     # move the finger to a goal position that's defined in the code
 
 	DXL_MOVING_STATUS_THRESHOLD = deg2pulse(2)                # Dynamixel moving status threshold
+
+	if limits != False:
+		for i in range(len(goal_position)):
+			if goal_position[i] < limits[0]:
+				goal_position[i] = limits[0]
+			elif goal_position[i] > limits[1]:
+				goal_position[i] = limits[1]
 
 	param_goal_position = [0]*len(DXL_IDS)
 	count = 0
@@ -300,7 +307,7 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
-		
+
 		if tries > max_tries:
 			moving = False
 			print('The motor is unable to achieve the desired position ')
@@ -417,7 +424,7 @@ def print_curr_volt(DXL_IDS, print_motor_id, portHandler, packetHandler, groupBu
 
 	# print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
 	print('cur_limt: %0.2f A,  cur_psnt:  %0.3f A,  cur_goal: %0.2f A, pwm_goal: %0.2f %%, pwm_psnt: %0.2f %%, vlt_inpt: %0.2f V' % (cur_lim[print_motor_id-1], cur_pres[print_motor_id-1], cur_goal[print_motor_id-1], pwm_goal[print_motor_id-1], pwm_pres[print_motor_id-1],  volt_pres[print_motor_id-1]))
-	
+
 # get keyboard stroke based on mac or windows operating system
 def getch():
 	import os

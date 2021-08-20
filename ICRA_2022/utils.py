@@ -1,9 +1,6 @@
+import os
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 import numpy as np
-
-# initialize dynamixels
-# Set goal position as present position
-# Return a bunch of handles necessary to accessing dynamixels
 
 def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_LIMIT=[1193]):
 	# operating_mode accepts two inputs: current_position, extended_position
@@ -26,6 +23,7 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 		PRO_HARDWARE_ERROR     = 70
 		PRO_DRIVE_MODE         = 10
 		PRO_VELOCITY_PROFILE   = 112
+		PRO_VELOCITY_LIMIT	   = 44
 
 	# Data Byte Length
 	class LEN:
@@ -34,6 +32,7 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 		PRO_CURRENT             = 2
 		PRO_PWM                 = 2
 		PRO_VOLT                = 2
+		PRO_VELOCITY            = 4
 
 	# Protocol version
 	PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
@@ -45,6 +44,7 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 	EXT_POSITION_CONTROL_MODE   = 4                 # Value for extended position control mode (operating mode)
 	CURRENT_BASED_POSITION      = 5                 # Value for current-based position control mode (operating mode)
 	VELOCITY_BASED_PROFILE      = 0
+	VELOCITY_LIMIT				= rpm2vel(1*60)
 	TORQUE_ENABLE               = 1                 # Value for enabling the torque
 	TORQUE_DISABLE              = 0                 # Value for disabling the torque
 	DXL_MOVING_STATUS_THRESHOLD = 5                 # Dynamixel moving status threshold
@@ -52,8 +52,8 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 	GOAL_TORQUE                 = 0.45
 	JOINT_TORQUE                = [0.4, 0.4, 0.4, 0.4, 0.02, 0.02]  # Nm, desired torque for each joint motor ordered following DXL_TENSIONED
 	TORQUE_MARGIN               = 0.06      # the maximum value above the desired torque that is still an acceptable torque value
-	# DESIRED_CURRENT             = amps2Curr(2.0)            # desired current based on desired torque and converted to
-	# CURRENT_LIMIT               = amps2Curr(1.0)            # desired current based on desired torque and converted to
+	# DESIRED_CURRENT             = amps2curr(2.0)            # desired current based on desired torque and converted to
+	# CURRENT_LIMIT               = amps2curr(1.0)            # desired current based on desired torque and converted to
 	DESIRED_PWM                 = int(100/0.113)     # desired PWM value in units of 0.113%
 	VELOCITY_LIMIT              = int(3/0.229)
 	ROTATE_AMOUNT               = deg2pulse(30)
@@ -160,9 +160,9 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 		if setup[3] == len(DXL_IDS):
 			print("All dynamixel goal PWM values have been successfully changed")
 
-		# Set drive mode
+		# Set velocity limit
 		for motor_id in DXL_IDS:
-			dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, motor_id, ADDR.PRO_DRIVE_MODE, VELOCITY_BASED_PROFILE)
+			dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, motor_id, ADDR.PRO_VELOCITY_LIMIT, VELOCITY_LIMIT)
 			if dxl_comm_result != COMM_SUCCESS:
 				print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
 			elif dxl_error != 0:
@@ -171,7 +171,7 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 				setup[4] +=1
 
 		if setup[4] == len(DXL_IDS):
-			print("All dynamixel drive modes have been successfully changed to velocity-based")
+			print("All dynamixel velocity limits have been successfully set")
 
 	# Enable Torque
 	for motor_id in DXL_IDS:
@@ -194,12 +194,12 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 			quit()
 
 	# set initial goal position to current position
-	dxl_present_position = [0]*max(DXL_IDS)
-	dxl_comm_result = [0]*max(DXL_IDS)
-	dxl_error = [0]*max(DXL_IDS)
-	dxl_goal_position =  [0]*max(DXL_IDS)
-	for motor_id in DXL_IDS:
-		dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR.PRO_PRESENT_POSITION)
+	dxl_present_position = [0]*len(DXL_IDS)
+	dxl_comm_result = [0]*len(DXL_IDS)
+	dxl_error = [0]*len(DXL_IDS)
+	dxl_goal_position =  [0]*len(DXL_IDS)
+	for i in range(len(DXL_IDS)):
+		dxl_present_position[i], dxl_comm_result[i], dxl_error[i] = packetHandler.read4ByteTxRx(portHandler, DXL_IDS[i], ADDR.PRO_PRESENT_POSITION)
 	dxl_goal_position = dxl_present_position.copy()
 
 	return dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
@@ -230,11 +230,50 @@ def shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, ask
 	# Close port
 	portHandler.closePort()
 
-def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
+def calc_torque(DXLS, ifprint, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
+    # calculate the torque based on measured current
+    error_status = False
+    dxl_present_current = [0]*max(DXLS)
+    torque = [0]*max(DXLS)
+    for motor_id in DXLS:
+        # Read present current
+        dxl_present_current[motor_id-1], dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, motor_id, ADDR.PRO_PRESENT_CURRENT)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("[ID:%-2d]: %s" % (motor_id, packetHandler.getRxPacketError(dxl_error)))
+            dxl_error_message, dxl_comm_result, dxl_error = packetHandler.read1ByteTxRx(portHandler, motor_id, ADDR.PRO_HARDWARE_ERROR)
+            error_status = True
+
+        # convert current unit to amps
+        dxl_present_current[motor_id-1] = curr2amps(dxl_present_current[motor_id-1])
+
+        if dxl_present_current[motor_id-1] > 150:
+            # when the cables are slack, the current is really large, but toque is actually zero so set to zero
+            torque[motor_id-1] = 0
+        else:
+            torque[motor_id-1] = current2torque(dxl_present_current[motor_id-1])
+    if ifprint == True:
+        measurements = ''
+        for motor_id in DXLS:
+            # measurements = measurements + ("    [ID:%02d] PresTorque:%3.2fNm, PresCurrent:%8.4fA" % (DXL_TENSIONED[i], torque[i], dxl_present_current[i]))
+            measurements = measurements + ("    [ID:%02d] Torque: %3.2fNm" % (motor_id, torque[motor_id-1]))
+        print(measurements)
+    return torque, dxl_present_current, error_status
+
+def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, limits=False):
 	# will line 249 error with DXL_LOBYTE, etc.?
     # move the finger to a goal position that's defined in the code
 
-	DXL_MOVING_STATUS_THRESHOLD = 5                # Dynamixel moving status threshold
+	DXL_MOVING_STATUS_THRESHOLD = deg2pulse(2)                # Dynamixel moving status threshold
+
+	if limits != False:
+		print('motor will only turn within limits')
+		for i in range(len(goal_position)):
+			if goal_position[i] < limits[0]:
+				goal_position[i] = limits[0]
+			elif goal_position[i] > limits[1]:
+				goal_position[i] = limits[1]
 
 	param_goal_position = [0]*len(DXL_IDS)
 	count = 0
@@ -247,7 +286,7 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 		if dxl_addparam_result != True:
 			print("[ID:%03d] groupBulkWrite addparam failed" % motor_id)
 			quit()
-			count += 1
+		count += 1
 
     # Bulkwrite goal position
 	dxl_comm_result = groupBulkWrite.txPacket()
@@ -258,30 +297,74 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 	groupBulkWrite.clearParam()
 
 	tries = 0
+	max_tries = 200
 	moving = True
 	while moving:
 		print_curr_volt(DXL_IDS, DXL_IDS[0], portHandler, packetHandler, groupBulkRead, ADDR, LEN)
         # get present position
 		dxl_present_position = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+		# print('Present position: ', dxl_present_position, ',  Goal position: ', goal_position)
 
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
-		
-		if tries > 30:
+
+		if tries > max_tries:
 			moving = False
 			print('The motor is unable to achieve the desired position ')
 
 		tries += 1
 
-	if tries > 30:
-		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
-
 	if tries > max_tries:
 		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
 		print('The motors have been shut down')
 
+	print_curr_volt(DXL_IDS, DXL_IDS[0], portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+
 	return dxl_present_position
+
+def tension(dxl_present_position, dxl_goal_position, DXL_IDS, DXL_TENSIONED, JOINT_TORQUE, TORQUE_MARGIN, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
+    # keep moving the finger to the desired torque until the desired torque is achieved
+
+    dxl_comm_result = [0]*max(DXL_IDS)
+    dxl_error = [0]*max(DXL_IDS)
+
+    for motor_id in DXL_IDS:
+        dxl_present_position[motor_id-1], dxl_comm_result[motor_id-1], dxl_error[motor_id-1] = packetHandler.read4ByteTxRx(portHandler, motor_id, ADDR.PRO_PRESENT_POSITION)
+
+    ROTATE_AMOUNT = 5
+    torque, dxl_present_current, error_status = calc_torque(DXL_IDS, True, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN)
+
+    num_tensioned = 0;
+    print('Start tensioning')
+    while (num_tensioned < len(DXL_TENSIONED)) & (error_status == False):
+        # write new goal position
+        num_tensioned = 0;
+        count = 0
+        for motor_id in DXL_TENSIONED:
+            if round(torque[motor_id-1],2) > (JOINT_TORQUE[count] + 0.2):
+                new_goal = - 3*ROTATE_AMOUNT
+            elif round(torque[motor_id-1],2) > (JOINT_TORQUE[count] + TORQUE_MARGIN):
+                new_goal = - ROTATE_AMOUNT
+            elif round(torque[motor_id-1],2) < 0.05:
+                new_goal =  5*ROTATE_AMOUNT
+            elif round(torque[motor_id-1],2) < JOINT_TORQUE[count]:
+                new_goal = ROTATE_AMOUNT
+            else:
+                new_goal = 0
+                num_tensioned += 1
+            dxl_goal_position[motor_id-1] = dxl_goal_position[motor_id-1] + new_goal
+            count = count + 1
+
+        dxl_present_position = move(DXL_IDS, dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN)
+        torque, dxl_present_current, error_status = calc_torque(DXL_IDS, False, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN)
+    if error_status == True:
+        print('Error. Stopped tensioning.')
+    else:
+        print('Finished tensioning')
+
+    return dxl_present_position, dxl_goal_position
+
 
 def dxl_read(DXL_IDS, packetHandler, groupBulkRead, read_ADDR, read_LEN):
 	# Bulkread present positions
@@ -333,15 +416,15 @@ def dxl_get_elec(DXLS, portHandler, packetHandler, groupBulkRead, ADDR_read, ADD
 	return dxl_present_current
 
 def print_curr_volt(DXL_IDS, print_motor_id, portHandler, packetHandler, groupBulkRead, ADDR, LEN):
-	cur_lim = curr2Amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT, ADDR))
-	cur_pres = curr2Amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT, ADDR))
-	cur_goal = curr2Amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT, ADDR))
+	cur_lim = curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT, ADDR))
+	cur_pres = curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT, ADDR))
+	cur_goal = curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT, ADDR))
 	pwm_goal = pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM, ADDR))
 	pwm_pres = pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM, ADDR))
-	volt_pres = volt2Volts(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE, ADDR))
+	volt_pres = volt2volts(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE, ADDR))
 
 	# print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
-	print('cur_limt: %0.2f A,  cur_psnt:  %0.4f A,  cur_goal: %0.2f A, pwm_goal: %0.2f %%, pwm_psnt: %0.2f %%, vlt_inpt: %0.2f V' % (cur_lim[print_motor_id-1], cur_pres[print_motor_id-1], cur_goal[print_motor_id-1], pwm_goal[print_motor_id-1], pwm_pres[print_motor_id-1],  volt_pres[print_motor_id-1]))
+	print('cur_limt: %0.2f A,  cur_psnt:  %0.3f A,  cur_goal: %0.2f A, pwm_goal: %0.2f %%, pwm_psnt: %0.2f %%, vlt_inpt: %0.2f V' % (cur_lim[print_motor_id-1], cur_pres[print_motor_id-1], cur_goal[print_motor_id-1], pwm_goal[print_motor_id-1], pwm_pres[print_motor_id-1],  volt_pres[print_motor_id-1]))
 
 # get keyboard stroke based on mac or windows operating system
 def getch():
@@ -366,15 +449,13 @@ def deg2pulse(deg):
     ratio = 1
     return int(deg*(ratio/0.088))
 
-def curr2Amps(current_reading):
+def curr2amps(current_reading):
 	amps = current_reading
 	for i in range(0,len(amps)):
 		amps[i] = float(current_reading[i]*2.69/1000)
 	return amps
 
-def amps2Curr(current_amps):
-	current = current_amps
-	# for i in range(0,len(current)):
+def amps2curr(current_amps):
 	current = int(current_amps*1000/2.69)
 	return current
 
@@ -384,7 +465,7 @@ def pwm2pcnt(pwm_reading):
 		pcnt[i] = float(pwm_reading[i]*0.113)
 	return pcnt
 
-def volt2Volts(voltage_reading):
+def volt2volts(voltage_reading):
 	volts = voltage_reading
 	for i in range(0,len(volts)):
 		volts[i] = float(voltage_reading[i]*0.1)
@@ -398,3 +479,7 @@ def torque2current(torque):
 
 def current2torque(current_amps):
     return float((current_amps - 0.1775)/0.95)
+
+def rpm2vel(rpms):
+	vel =  int(rpms/0.229)
+	return vel
