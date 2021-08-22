@@ -190,7 +190,7 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_
 
 	# set initial goal position to current position
 	dxl_present_position = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
-	dxl_goal_position = dxl_present_position.copy()
+	dxl_goal_position = dxl_present_position.copy().astype(int)
 
 	return dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
 
@@ -222,8 +222,8 @@ def shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, ask
 
 def calc_torque(DXL_IDS, ifprint, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
 	# calculate the torque based on measured current
-	dxl_present_current = [0]*len(DXL_IDS)
-	torque = [0]*len(DXL_IDS)
+	dxl_present_current = np.zeros(len(DXL_IDS))
+	torque = np.zeros(len(DXL_IDS))
 
 	for i in range(len(DXL_IDS)):
         # Read present current
@@ -255,6 +255,7 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
     # move the finger to a goal position that's defined in the code
 
 	DXL_MOVING_STATUS_THRESHOLD = deg2pulse(5)                # Dynamixel moving status threshold
+	goal_position = goal_position.astype(int)
 
 	if limits != False:
 		for i in range(len(goal_position)):
@@ -266,17 +267,16 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 				print('upper position limit reached')
 
 	param_goal_position = [0]*len(DXL_IDS)
-	count = 0
-	for motor_id in DXL_IDS:
+
+	for i in range(len(DXL_IDS)):
 		# Allocate goal position value into byte array
-		param_goal_position[count] = [DXL_LOBYTE(DXL_LOWORD(goal_position[count])), DXL_HIBYTE(DXL_LOWORD(goal_position[count])), DXL_LOBYTE(DXL_HIWORD(goal_position[count])), DXL_HIBYTE(DXL_HIWORD(goal_position[count]))]
+		param_goal_position[i] = [DXL_LOBYTE(DXL_LOWORD(goal_position[i])), DXL_HIBYTE(DXL_LOWORD(goal_position[i])), DXL_LOBYTE(DXL_HIWORD(goal_position[i])), DXL_HIBYTE(DXL_HIWORD(goal_position[i]))]
 
         # Add Dynamixel goal position value to the Bulkwrite parameter storage
-		dxl_addparam_result = groupBulkWrite.addParam(motor_id, ADDR.PRO_GOAL_POSITION, LEN.PRO_GOAL_POSITION, param_goal_position[count])
+		dxl_addparam_result = groupBulkWrite.addParam(DXL_IDS[i], ADDR.PRO_GOAL_POSITION, LEN.PRO_GOAL_POSITION, param_goal_position[i])
 		if dxl_addparam_result != True:
-			print("[ID:%03d] groupBulkWrite addparam failed" % motor_id)
+			print("[ID:%03d] groupBulkWrite addparam failed" % DXL_IDS[i])
 			quit()
-			count += 1
 
     # Bulkwrite goal position
 	dxl_comm_result = groupBulkWrite.txPacket()
@@ -314,13 +314,11 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 	return dxl_present_position
 
 def tension(dxl_present_position, dxl_goal_position, DXL_IDS, DXL_TENSIONED, JOINT_TORQUE, TORQUE_MARGIN, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
-    # keep moving the finger to the desired torque until the desired torque is achieved
-
-    dxl_comm_result = [0]*len(DXL_IDS)
-    dxl_error = [0]*len(DXL_IDS)
+    # used in open loop tendon drive
+	# keep moving the finger to the desired torque until the desired torque is achieved
 
     for i in range(len(DXL_IDS)):
-        dxl_present_position[i], dxl_comm_result[i], dxl_error[i] = packetHandler.read4ByteTxRx(portHandler, DXL_IDS[i], ADDR.PRO_PRESENT_POSITION)
+        dxl_present_position[i], dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL_IDS[i], ADDR.PRO_PRESENT_POSITION)
 
     ROTATE_AMOUNT = 5
     torque, _, error_status = calc_torque(DXL_IDS, True, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN)
@@ -354,7 +352,6 @@ def tension(dxl_present_position, dxl_goal_position, DXL_IDS, DXL_TENSIONED, JOI
 
     return dxl_present_position, dxl_goal_position
 
-
 def dxl_read(DXL_IDS, packetHandler, groupBulkRead, read_ADDR, read_LEN):
 	# Bulkread present positions
 	dxl_comm_result = groupBulkRead.txRxPacket()
@@ -369,19 +366,17 @@ def dxl_read(DXL_IDS, packetHandler, groupBulkRead, read_ADDR, read_LEN):
 			quit()
 
 	# Get value
-	read_value = [0]*len(DXL_IDS)
-	count = 0
-	for motor_id in DXL_IDS:
-		read_value[count] = groupBulkRead.getData(motor_id, read_ADDR, read_LEN)
-		count += 1
+	read_value = np.zeros(len(DXL_IDS))
+	for i in range(len(DXL_IDS)):
+		read_value[i] = groupBulkRead.getData(DXL_IDS[i], read_ADDR, read_LEN)
 	return read_value
 
-def dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR_read, ADDR):
-	dxl_present_current = [0]*len(DXL_IDS)
-	torque = [0]*len(DXL_IDS)
+def dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR_read, ADDR):
+	present_value = [0]*len(DXL_IDS) # created as a list because it will store strings of binary numbers
+	dxl_present_read = np.zeros(len(DXL_IDS))
 	for i in range(len(DXL_IDS)):
 		# Read present electricity
-		dxl_present_current[i], dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_IDS[i], ADDR_read)
+		present_value, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_IDS[i], ADDR_read)
 		if dxl_comm_result != COMM_SUCCESS:
 			print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
 		elif dxl_error != 0:
@@ -390,7 +385,7 @@ def dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR_read, 
 		if ADDR_read == ADDR.PRO_PRESENT_CURRENT:
 			# find two's complement
 			# convert number to binary
-			bin_num = bin(dxl_present_current[i])[2:]
+			bin_num = bin(present_value)[2:]
 			while len(bin_num)<16:
 				bin_num = '0'+bin_num
 			if bin_num[0] == '0':
@@ -398,20 +393,20 @@ def dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR_read, 
 			else:
 				twos_complement =  -1 * (int(''.join('1' if x == '0' else '0' for x in bin_num), 2) + 1)
 
-			dxl_present_current[i] = twos_complement # min([dxl_present_current[motor_id-1], twos_complement])
+			dxl_present_read[i] = twos_complement
 			# dxl_present_current[motor_id-1] = min([dxl_present_current[motor_id-1], -abs(65535 - dxl_present_current[motor_id-1])])
+		else:
+			dxl_present_read[i] = present_value
 
-	dxl_present_current[i] = round(dxl_present_current[i],2)
-
-	return dxl_present_current
+	return dxl_present_read
 
 def print_curr_volt(DXL_IDS, print_motor_ind, portHandler, packetHandler, groupBulkRead, ADDR, LEN):
-	cur_lim = curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_CURRENT_LIMIT, ADDR))
-	cur_pres = curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_CURRENT, ADDR))
-	cur_goal = curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_CURRENT, ADDR))
-	pwm_goal = pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_GOAL_PWM, ADDR))
-	pwm_pres = pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_PWM, ADDR))
-	volt_pres = volt2volts(dxl_get_elec(DXL_IDS, portHandler, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_INPUT_VOLTAGE, ADDR))
+	cur_lim = np.around(curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_CURRENT_LIMIT, ADDR)),2)
+	cur_pres = np.around(curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_PRESENT_CURRENT, ADDR)),2)
+	cur_goal = np.around(curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_GOAL_CURRENT, ADDR)),2)
+	pwm_goal = np.around(pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_GOAL_PWM, ADDR)),1)
+	pwm_pres = np.around(pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_PRESENT_PWM, ADDR)),1)
+	volt_pres = np.around(volt2volts(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_PRESENT_INPUT_VOLTAGE, ADDR)),1)
 
 	print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
 	# print('cur_limt: %0.2f A,  cur_psnt:  %0.3f A,  cur_goal: %0.2f A, pwm_goal: %0.2f %%, pwm_psnt: %0.2f %%, vlt_inpt: %0.2f V' % (cur_lim[print_motor_ind], cur_pres[print_motor_ind], cur_goal[print_motor_ind], pwm_goal[print_motor_ind], pwm_pres[print_motor_ind],  volt_pres[print_motor_ind]))
@@ -440,9 +435,7 @@ def deg2pulse(deg):
     return int(deg*(ratio/0.088))
 
 def curr2amps(current_reading):
-	amps = current_reading
-	for i in range(0,len(amps)):
-		amps[i] = float(current_reading[i]*2.69/1000)
+	amps = float(current_reading*2.69/1000)
 	return amps
 
 def amps2curr(current_amps):

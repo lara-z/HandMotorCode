@@ -5,6 +5,6 @@ class read_pts:
     y_start = [28]
     y_end = [32]
 visualize = True
-args, ser, p_zero, f_zero = initialize_sensor('/dev/ttyUSB0', visualize, read_pts)
+args, ser, p_zero, f_zero = initialize_sensor('COM3', visualize, read_pts)
 while True:
     read_pres(p_zero, f_zero, args, ser, read_pts)

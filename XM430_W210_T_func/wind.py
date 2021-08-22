@@ -57,7 +57,6 @@ while 1:
 
     dxl_goal_position = dxl_read(motor_id, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
     # write new goal position
-    print(dxl_goal_position)
     dxl_goal_position[0] += direction*ROTATE_AMOUNT
 
     # move motor
