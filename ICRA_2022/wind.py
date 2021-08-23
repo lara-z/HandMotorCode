@@ -19,7 +19,7 @@
 ################################################################################
 
 
-from conversions import *
+from utils import *
 
 com_num = '/dev/ttyUSB0'
 

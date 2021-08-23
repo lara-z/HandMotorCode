@@ -250,7 +250,7 @@ def calc_torque(DXL_IDS, ifprint, packetHandler, portHandler, groupBulkWrite, gr
 		print(measurements)
 	return torque, dxl_present_current
 	
-def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, limits=False):
+def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=False, limits=False):
 	# will line 249 error with DXL_LOBYTE, etc.?
     # move the finger to a goal position that's defined in the code
 
@@ -259,11 +259,11 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 
 	if limits != False:
 		for i in range(len(goal_position)):
-			if goal_position[i] < limits[0]:
-				goal_position[i] = limits[0]
+			if goal_position[i] < limits[i][0]:
+				goal_position[i] = limits[i][0]
 				print('lower position limit reached')
-			elif goal_position[i] > limits[1]:
-				goal_position[i] = limits[1]
+			elif goal_position[i] > limits[i][1]:
+				goal_position[i] = limits[i][1]
 				print('upper position limit reached')
 
 	param_goal_position = [0]*len(DXL_IDS)
@@ -290,11 +290,12 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 	max_tries = 20
 	moving = True
 	while moving:
-		print_curr_volt(DXL_IDS, 0 , portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+		if print_currvolt == True:
+			print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+
         # get present position
 		dxl_present_position = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
-		print('Present position: ', dxl_present_position, ',  Goal position: ', goal_position)
-
+		
 		for count in range(0,len(dxl_present_position)):
 			if not (abs(goal_position[count] - dxl_present_position[count]) > DXL_MOVING_STATUS_THRESHOLD):
 				moving = False
@@ -309,7 +310,8 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
 		print('The motors have been shut down')
 
-	print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+	if print_currvolt == True:
+		print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
 
 	return dxl_present_position
 
@@ -435,7 +437,7 @@ def deg2pulse(deg):
     return int(deg*(ratio/0.088))
 
 def curr2amps(current_reading):
-	amps = float(current_reading*2.69/1000)
+	amps = (current_reading*2.69/1000)
 	return amps
 
 def amps2curr(current_amps):

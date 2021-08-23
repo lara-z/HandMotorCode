@@ -20,7 +20,7 @@ def getData(args, ser, length=None):
         if x.shape[0] != dimx * dimy:
             print("only get %d, use previously stored data" % x.shape[0])
             return 'w'
-        x = x.reshape(dimy, dimx).transpose(1, 0)
+        x = x.reshape(dimy, dimx)
         return x
 
 def sendData(args, ser, serial_data):
@@ -59,8 +59,8 @@ def initialize_sensor(sensor_port, visualize, read_pts):
         plt.rcParams["figure.figsize"] = (6, 6)
 
     # temporarily set the pressure and force calibration values to 0
-    p_zero = 0
-    f_zero = 0
+    p_zero = np.zeros(len(read_pts.x_start))
+    f_zero = np.zeros(len(read_pts.x_start))
 
     # get initial pressure reading to calibrate sensor value
     p_zero, _, f_zero = read_pres(p_zero, f_zero, args, ser, read_pts, initializing = True)
@@ -68,57 +68,71 @@ def initialize_sensor(sensor_port, visualize, read_pts):
 
     return args, ser, p_zero, f_zero
 
-def read_pres(p_zero, f_zero, args, ser, read_pts, initializing=False):
+def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializing=False):
     # read pressure from the sensor once the sensor has been initialized
-    mean_press = 0
-    max_press = 0
-    force = 0
+    mean_press = np.zeros(len(read_pts.x_start))
+    max_press = np.zeros(len(read_pts.x_start))
+    force = np.zeros(len(read_pts.x_start))
+    x = [0]*len(read_pts.x_start)
 
     # take an average reading over time to calibrate zero pressure when initializing
     if initializing == True:
-        count_limit = 10
+        max_count = 15
+        print('')
+        print('Zeroing sensor readings...')
     else:
-        count_limit = 1
+        max_count = 1
 
     st_time = time.time()
     count = 0
-    while count < count_limit:
+    while count < max_count:
         # take the average reading for during duration of time t_data
         ser, _= sendData(args, ser, 'a')
         # time.sleep(0.01)
-        x = getData(args, ser, length=args.dimx*args.dimy*2)
+        data = getData(args, ser, length=args.dimx*args.dimy*2)
 
         if args.inverse:
-            x = x[::-1]
+            data = data[::-1]
 
-        if x[0] == 'w':
-            x = np.ones((args.dimx, args.dimy)) * 550
+        if data[0] == 'w':
+            data = np.ones((args.dimx, args.dimy)) * 550
         
-        # get the relevant data points
-        x = x[read_pts.x_start:read_pts.x_end,read_pts.y_start:read_pts.y_end]
+        if (initializing != True) or (count != 0):
+            for i in range(len(read_pts.x_start)):
+                # get the relevant data points
+                x[i] = data[read_pts.x_start[i]:read_pts.x_end[i],read_pts.y_start[i]:read_pts.y_end[i]]
 
-        # calculate force and pressure
-        mean_press += x.mean()
-        max_press += x.max()
-        force += x.sum()
-        
+                # calculate force and pressure
+                mean_press[i] += x[i].mean()
+                max_press[i] += x[i].max()
+                force[i] += x[i].sum()
         count += 1
-    # calculate zero-ed force and pressure
-    mean_press = (mean_press/count) - p_zero
-    max_press = (max_press/count) - p_zero
-    force = (force/count) - f_zero
+    
+    vis_data = x[0]
 
-    if args.vis==True and initializing==False:
-        plt.imshow(x - p_zero)
+    if initializing == True:
+        count -= 1 # first data reading is always a ones matrix, so removed in initialization, don't count
+
+    # calculate zero-ed force and pressure
+    for i in range(len(read_pts.x_start)):
+        mean_press[i] = int((mean_press[i]/count) - p_zero[i])
+        max_press[i] = int((max_press[i]/count) - p_zero[i])
+        force[i] = round((force[i]/count) - f_zero[i])
+
+        if i > 0:
+            vis_data = np.concatenate((vis_data,x[i]),axis=1)
+
+    if ((args.vis==True) and (initializing==False)):
+        plt.imshow(vis_data) # 0:13,0:9
         plt.colorbar()
-        plt.clim(0, 150)
+        plt.clim(550, 750)
         plt.draw()
         plt.pause(1e-7)
-
         plt.gcf().clear()
 
-    print('max.pressure : %0.1f, force: %0.1f' % (max_press, force))
-    # print("Time elapsed:", time.time() - st_time)
+    if print_pres == True:
+        print('max.pressure : ' ,max_press, ', force: ', force)
+        # print("Time elapsed:", time.time() - st_time)
 
 
     return mean_press, max_press, force
