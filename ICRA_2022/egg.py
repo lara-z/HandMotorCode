@@ -9,22 +9,27 @@ UR5_on = False
 DXL_on = True
 sensor_on = True
 
+com_port_dxl = '/dev/ttyUSB0' # !!! update
+com_port_sensor = '/dev/ttyUSB1' # !!! update
+
+# establish UR5 variables
 ee_start_pos = [] # !!! find good start position
 lift_ind = 2
 lift_amount = 0.2
-ee_xyz = []*3
+ee_xyz = [0]*3
 ee_xyz[lift_ind] = lift_amount
 
-com_port_dxl = '/dev/ttyUSB0' # !!! update
-com_port_sensor = '/dev/ttyUSB1' # !!! update
-operating_mode = 'extended_position'
-
+# establish dxl variables
+operating_mode = 'current_position'
+current_des = amps2curr(1.0)	# for current-based position control
+current_lim = amps2curr(1.2)	# for current-based position control
 rotate_amount = deg2pulse(5) # !!! change once gear ratio and units have been established
-rotate_open = deg2pulse(60) # !!! update
+rotate_limit = deg2pulse(40) # !!! update
 motor_ids = [7,4,3,1]
 motor_direction = [-1,-1,1,1] # make values -1 in case agonist or antagonist cables were switched during assembly
 dxl_limits = [0]*len(motor_ids)
 
+# establish sensor variables
 visualize = False
 num_fing = len(motor_ids)
 pres = [0]*num_fing
@@ -34,8 +39,10 @@ class read_pts:
     x_end   = [4,2,8,6]
     y_start = [0,3,6,10]
     y_end   = [3,6,9,12]
-p_thresh = 50
-f_thresh = 50
+p_thresh = 15
+p_margin = 0
+f_thresh = 10
+f_margin = 0
 
 # !!! change to multithread so fingers can move simultaneously?
 
@@ -43,8 +50,8 @@ def get_pres():
 	mean_pres, max_pres, force = read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=True)
 	return mean_pres, max_pres, force
 
-def move_dxl():
-	_ = move(motor_ids, goal_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, limits = dxl_limits)
+def move_dxl(dxl_goal):
+	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, limits = dxl_limits)
 
 # robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
@@ -55,15 +62,14 @@ if UR5_on == True:
 # initialize dynamixel and open fingers
 if DXL_on == True:
 	# initialize dynamixels with fingers in ending position
-	motor_pos, goal_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_ids, com_port_dxl, operating_mode)
+	motor_pos, goal_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_ids, com_port_dxl, operating_mode, current_des, current_lim)
 	# set joint limits
 	for i in range(num_fing):
-		dxl_limits[i] = [int(motor_pos[i]) - deg2pulse(30), int(motor_pos[i]) + deg2pulse(30)]
-		dxl_limits[i] = [int(motor_pos[i]) - 2*deg2pulse(30), int(motor_pos[i])]
+		dxl_limits[i] = sorted([int(motor_pos[i]) - motor_direction[i]*rotate_limit, int(motor_pos[i]) + motor_direction[i]*rotate_limit])
 	# open fingers to grasp around egg
 	for i in range(0,len(goal_pos)):
-		goal_pos[i] -= int(motor_direction[i]*rotate_open/2)
-	move_dxl()
+		goal_pos[i] -= int(motor_direction[i]*rotate_limit)
+	move_dxl(goal_pos)
 
 if sensor_on == True:
 	args, ser, p_zero, f_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
@@ -82,19 +88,25 @@ else:
 print('Fingers will close around egg')
 if DXL_on == True:
 	print('press y to move the fingers or press ESC to stop')
-	while np.any(pres <= p_thresh) or np.any(force <= f_thresh):
-	# while any(i <= p_thresh for i in pres):
-		keypress = getch()
-		if keypress == chr(0x1b):
-			print('Escaped from grasping')
-			break
-		elif keypress == 'y':
+	keypress = getch()
+	# while np.any(pres <= p_thresh) or np.any(force <= f_thresh):
+	while (np.sum(pres <= p_thresh)>0.25*num_fing) or (np.sum(force <= f_thresh) > 0.25*num_fing):
+		# keypress = getch()
+		# if keypress == chr(0x1b):
+			# print('Escaped from grasping')
+			# break
+		# elif keypress == 'y':
+			diff = [0]*len(goal_pos)
 			for i in range(0,len(goal_pos)):
-				if (pres[i] <= p_thresh) or (force[i] <= f_thresh):
+				# check that pressure is below thresholds
+				if (pres[i] <= p_thresh) and (force[i] <= f_thresh):
+					# if (pres[i] <= (pres.mean() - p_margin)) and (force[i] <= (force.mean() - f_margin)):
 					goal_pos[i] += motor_direction[i]*rotate_amount
-			move_dxl()
+					diff[i] += motor_direction[i]*rotate_amount
+			print(diff)
+			move_dxl(goal_pos)
 			# read pressures
-			_, pres, _ = get_pres()
+			_, pres, force = get_pres()
 
 	print('Finished grasping')
 
@@ -109,12 +121,12 @@ print('Fingers will release egg')
 if DXL_on == True:
 	# open grasp
 	for i in range(0,len(goal_pos)):
-		goal_pos[i] -= motor_direction[i]*rotate_open
+		goal_pos[i] = motor_pos[i] - motor_direction[i]*rotate_limit
 	print('press y to move the fingers or press ESC to stop')
 	keypress = getch()
 	if keypress == chr(0x1b):
 		print('Escaped from grasping')
 	elif keypress == 'y':
-		move_dxl()
+		move_dxl(goal_pos)
 
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)

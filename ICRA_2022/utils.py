@@ -2,7 +2,7 @@ import os
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 import numpy as np
 
-def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=[500], CURRENT_LIMIT=[1193]):
+def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=500, CURRENT_LIMIT=1193):
 	# operating_mode accepts two inputs: current_position, extended_position
 
 	os.sys.path.append('../dynamixel_functions_py')             # Path setting
@@ -260,11 +260,11 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 	if limits != False:
 		for i in range(len(goal_position)):
 			if goal_position[i] < limits[i][0]:
-				goal_position[i] = limits[i][0]
-				print('lower position limit reached')
+				goal_position[i] = int(limits[i][0])
+				print('DXLID', DXL_IDS[i], ': lower position limit reached')
 			elif goal_position[i] > limits[i][1]:
-				goal_position[i] = limits[i][1]
-				print('upper position limit reached')
+				goal_position[i] = int(limits[i][1])
+				print('DXLID', DXL_IDS[i], ': upper position limit reached')
 
 	param_goal_position = [0]*len(DXL_IDS)
 
@@ -306,9 +306,9 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 
 		tries += 1
 
-	if tries > max_tries:
-		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
-		print('The motors have been shut down')
+	# if tries > max_tries:
+	# 	shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+	# 	print('The motors have been shut down')
 
 	if print_currvolt == True:
 		print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)

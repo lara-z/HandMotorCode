@@ -79,7 +79,7 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
     if initializing == True:
         max_count = 15
         print('')
-        print('Zeroing sensor readings...')
+        print('Zeroing sensor readings. One moment...')
     else:
         max_count = 1
 
@@ -94,7 +94,7 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
         if args.inverse:
             data = data[::-1]
 
-        if data[0] == 'w':
+        if (data[0]) is str:
             data = np.ones((args.dimx, args.dimy)) * 550
         
         if (initializing != True) or (count != 0):
@@ -115,8 +115,8 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
 
     # calculate zero-ed force and pressure
     for i in range(len(read_pts.x_start)):
-        mean_press[i] = int((mean_press[i]/count) - p_zero[i])
-        max_press[i] = int((max_press[i]/count) - p_zero[i])
+        mean_press[i] = round(((mean_press[i]/count) - p_zero[i]),1)
+        max_press[i] = round(((max_press[i]/count) - p_zero[i]),1)
         force[i] = round((force[i]/count) - f_zero[i])
 
         if i > 0:
@@ -131,7 +131,7 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
         plt.gcf().clear()
 
     if print_pres == True:
-        print('max.pressure : ' ,max_press, ', force: ', force)
+        print('mean pressure', mean_press, 'max.pressure : ' ,max_press, ', force: ', force)
         # print("Time elapsed:", time.time() - st_time)
 
 
