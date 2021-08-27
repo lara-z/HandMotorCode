@@ -107,8 +107,6 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
                 max_press[i] += x[i].max()
                 force[i] += x[i].sum()
         count += 1
-    
-    vis_data = x[0]
 
     if initializing == True:
         count -= 1 # first data reading is always a ones matrix, so removed in initialization, don't count
@@ -120,12 +118,14 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
         force[i] = round((force[i]/count) - f_zero[i])
 
         if i > 0:
-            vis_data = np.concatenate((vis_data,x[i]),axis=1)
+            vis_data = np.concatenate((vis_data,x[i] - p_zero[i]),axis=1)
+        else:
+            vis_data = x[i] - p_zero[i]
 
     if ((args.vis==True) and (initializing==False)):
         plt.imshow(vis_data) # 0:13,0:9
         plt.colorbar()
-        plt.clim(550, 750)
+        plt.clim(0, 150)
         plt.draw()
         plt.pause(1e-7)
         plt.gcf().clear()

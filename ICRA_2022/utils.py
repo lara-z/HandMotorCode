@@ -410,8 +410,8 @@ def print_curr_volt(DXL_IDS, print_motor_ind, portHandler, packetHandler, groupB
 	pwm_pres = np.around(pwm2pcnt(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_PRESENT_PWM, ADDR)),1)
 	volt_pres = np.around(volt2volts(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_PRESENT_INPUT_VOLTAGE, ADDR)),1)
 
-	print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
-	# print('cur_limt: %0.2f A,  cur_psnt:  %0.3f A,  cur_goal: %0.2f A, pwm_goal: %0.2f %%, pwm_psnt: %0.2f %%, vlt_inpt: %0.2f V' % (cur_lim[print_motor_ind], cur_pres[print_motor_ind], cur_goal[print_motor_ind], pwm_goal[print_motor_ind], pwm_pres[print_motor_ind],  volt_pres[print_motor_ind]))
+	# print('cur_limt: ', cur_lim, 'A,  cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, 'pwm_goal: ', pwm_goal, '%, pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
+	print('cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, ', pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
 
 # get keyboard stroke based on mac or windows operating system
 def getch():
