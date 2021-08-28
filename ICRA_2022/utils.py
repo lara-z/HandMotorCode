@@ -447,7 +447,7 @@ def amps2curr(current_amps):
 def pwm2pcnt(pwm_reading):
 	pcnt = pwm_reading
 	for i in range(0,len(pcnt)):
-		pcnt[i] = float(pwm_reading[i]*0.113)
+		pcnt[i] = int(pwm_reading[i]*0.113)
 	return pcnt
 
 def volt2volts(voltage_reading):

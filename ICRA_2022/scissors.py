@@ -1,10 +1,9 @@
 #!!! determine where in the room the cut_direction_index will cause the arm to move (if it's in the positive or negative direction)
 
 import time
-import airobot as ar
-from airobot import Robot
+# import airobot as ar
+# from airobot import Robot
 import numpy as np
-import keyboard
 from utils import *
 from utils_sensor import *
 
@@ -43,7 +42,7 @@ if DXL_on == True:
 		for i in range(1,len(motor_pos),2):
 			motor_pos[i] += rotate_right_angle
 		pres = 0 # !!! read pressure for each finger from sensors, outputs [palmar thumb, dorsal thumb, palmar pointer, palmar middle finger]
-		motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax
+		motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN) # !!! update with syntax
 
 		# spread the two fingers so the scissors won't drop
 		# !!! change to multithread so fingers can move simultaneously?
@@ -58,7 +57,7 @@ if DXL_on == True:
 					motor_pos[2] += rotate_support
 				if pres[3] < threshold_suppert:
 					motor_pos[4] += rotate_support
-				motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax
+				motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN) # !!! update with syntax
 			pres = 0 # !!! measure pressure
 
 	# open scissors
@@ -82,7 +81,7 @@ if DXL_on == True:
 			break
 		elif keypress == 'y':
 			motor_pos[0] += rotate_close
-			motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN): # !!! update with syntax
+			motor_pos = move(motor_ids, motor_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN) # !!! update with syntax
 
 if UR5_on == True:
 	# move arm back to starting position

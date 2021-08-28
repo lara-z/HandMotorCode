@@ -21,7 +21,7 @@
 
 from utils import *
 
-com_num = '/dev/ttyUSB2'
+com_num = '/dev/ttyUSB0'
 
 # comment out one of the lines below to change operating mode
 operating_mode = 'current_position' # current-based position control
@@ -32,7 +32,7 @@ current_limit = amps2curr(2.0) # input the number of amps and it will convert to
 current_goal = amps2curr(1.8) # input the goal number of amps
 
 motor_id = [int(input('What is the ID of the motor you would like to control?  '))]
-ROTATE_AMOUNT = deg2pulse(1.5) # the increment in degrees (converted to motor pulse units) you would like the motor to move
+ROTATE_AMOUNT = deg2pulse(5) # the increment in degrees (converted to motor pulse units) you would like the motor to move
 
 if operating_mode == 'extended_position':
     dxl_start_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_id, com_num, operating_mode)

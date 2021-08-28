@@ -12,7 +12,7 @@ DXL_on = True
 sensor_on = True
 mode = 'manual' # auto
 
-com_port_dxl = '/dev/ttyUSB2' # !!! update
+com_port_dxl = '/dev/ttyUSB1' # !!! update
 com_port_sensor = '/dev/ttyUSB0' # !!! update
 
 # establish UR5 variables
@@ -21,8 +21,8 @@ wrist_ind = 0
 
 # establish dxl variables
 operating_mode = 'current_position'
-current_des = amps2curr(1.1)	# for current-based position control
-current_lim = amps2curr(1.2)	# for current-based position control
+current_des = amps2curr(1.2)	# for current-based position control
+current_lim = amps2curr(1.5)	# for current-based position control
 motor_ids = [12,13,14]
 motor_direction = [-1, 1, -1]
 adduct_ind = 1
@@ -65,7 +65,7 @@ def calc_pres():
 
 def move_dxl(dxl_goal):
 	# move motors to goal position
-	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=True, limits = dxl_limits)
+	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=False, limits = dxl_limits)
 
 def adjust(dxl_goal, pressure, thresh):
 	# might need to make the pressure difference a percentage of pressure: as liquid leaves the bottle...
