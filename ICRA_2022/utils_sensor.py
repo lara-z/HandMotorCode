@@ -18,7 +18,7 @@ def getData(args, ser, length=None):
         x = np.frombuffer(input_string, dtype=np.uint8).astype(np.int)
         x = x[0::2] * 32 + x[1::2]
         if x.shape[0] != dimx * dimy:
-            print("only get %d, use previously stored data" % x.shape[0])
+            print("only got %d, use previously stored data" % x.shape[0])
             return 'w'
         x = x.reshape(dimy, dimx)
         return x
@@ -63,7 +63,7 @@ def initialize_sensor(sensor_port, visualize, read_pts):
     f_zero = np.zeros(len(read_pts.x_start))
 
     # get initial pressure reading to calibrate sensor value
-    p_zero, _, f_zero = read_pres(p_zero, f_zero, args, ser, read_pts, initializing = True)
+    p_zero, _, f_zero = read_pres(p_zero, f_zero, args, ser, read_pts, initializing=True)
     print('Sensor initialized')
 
     return args, ser, p_zero, f_zero

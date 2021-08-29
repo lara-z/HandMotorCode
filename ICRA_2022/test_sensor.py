@@ -1,10 +1,11 @@
 from utils_sensor import *
 class read_pts:
-    x_start = [10,0,20]
-    x_end   = [22,12,32]
-    y_start = [3,0,6]
-    y_end   = [6,3,9]
+    x_start = [0]
+    x_end   = [31]
+    y_start = [0]
+    y_end   = [31]
 visualize = True
-args, ser, p_zero, f_zero = initialize_sensor('/dev/ttyUSB1', visualize, read_pts)
+# '/dev/ttyUSB1'
+args, ser, p_zero, f_zero = initialize_sensor('COM4', visualize, read_pts)
 while True:
     read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=True)

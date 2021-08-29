@@ -1,3 +1,4 @@
+# scissor manipulator must be placed so that fingers are exactly vertical as starting position
 #!!! determine where in the room the cut_direction_index will cause the arm to move (if it's in the positive or negative direction)
 
 import time
@@ -29,7 +30,8 @@ gear_ratio = -1.1
 rotate_right_angle = 375 # !!! update with correct number, amount to rotate distal joints 90 degrees
 rotate_support = deg2pulse(5) # !!! update with correct number
 rotate_open = deg2pulse(20) # !!! update with correct number, amount to move thumb proximal joint to open scissors
-rotate_close = -deg2pulse(5) # !!! update with correct number, amount to move to incrementally try to close the scissors
+rotate_close_rapid = -deg2pulse(10) # !!! update with correct number, amount to move to incrementally try to close the scissors
+rotate_close_increment = -deg2pulse(5) # !!! update with correct number, amount to move to incrementally try to close the scissors
 rotate_limit = 600
 dxl_limits = [0]*len(motor_ids)
 
@@ -82,40 +84,53 @@ if sensor_on == True:
 else:
 	pres = np.zeros(num_fing)
 
-while cutting:
+# move fingers together to allow scissors to be mounted
+print('Moving fingers to prepare for scissor mounting. Press y to continue or ESC to skip')
+keypress = getch()
+if keypress == chr(0x1b):
+	print('Escaped from moving')
+elif keypress == 'y':
+	# goal_pos[0] += motor_direction[0]*rotate_open
+	# goal_pos[1] += motor_direction[1]*gear_ratio*rotate_close_rapid
+	goal_pos[2] += motor_direction[2]*rotate_close_rapid
+	goal_pos[3] += motor_direction[3]*gear_ratio*rotate_close_rapid
+	goal_pos[4] += motor_direction[4]*rotate_close_rapid
+	goal_pos[5] += motor_direction[5]*gear_ratio*rotate_close_rapid
+	move_dxl(goal_pos)
+
+if DXL_on == True:
+	# mount scissors
+	print('Once the scissors are positioned correctly over the manipulator, press m to move the joints to mount the scissors')
+	keypress = getch()
+	if keypress == 'm':
+		# close distal joints
+		for i in range(1,len(goal_pos),2):
+			goal_pos[i] += motor_direction[i]*rotate_right_angle
+		mean_pres, max_pres, force = get_pres()
+		move_dxl(goal_pos)
+
+		# spread the two fingers so the scissors won't drop
+		# !!! change to multithread so fingers can move simultaneously?
+		while any(i <= threshold_support for i in max_pres[2::]):
+			print('press y to move the fingers or press ESC to stop')
+			keypress = getch()
+			if keypress == chr(0x1b):
+				print('Escaped from grasping')
+				break
+			elif keypress == 'y':
+				for i in [1,2]:
+					if max_pres[i] < threshold_support:
+						goal_pos[2*i] += motor_direction[2*i]*rotate_support
+						goal_pos[2*i+1] += motor_direction[2*i+1]*gear_ratio*rotate_support
+				move_dxl(goal_pos)
+mean_pres, max_pres, force = get_pres()
+
+while True:
 	if DXL_on == True:
-		# mount scissors
-		print('Once the scissors are positioned correctly over the manipulator, press m to move the joints to mount the scissors')
-		keypress = getch()
-		if keypress == 'm':
-			# close distal joints
-			for i in range(1,len(goal_pos),2):
-				goal_pos[i] += motor_direction[i]*rotate_right_angle
-			mean_pres, max_pres, force = get_pres()
-			move_dxl(goal_pos)
-
-			# spread the two fingers so the scissors won't drop
-			# !!! change to multithread so fingers can move simultaneously?
-			while any(i <= threshold_support for i in max_pres[2::]):
-				print('press y to move the fingers or press ESC to stop')
-				keypress = getch()
-				if keypress == chr(0x1b):
-					print('Escaped from grasping')
-					break
-				elif keypress == 'y':
-					for i in [1,2]:
-						if max_pres[i] < threshold_support:
-							goal_pos[2*i] += motor_direction[2*i]*rotate_support
-							goal_pos[2*i+1] += motor_direction[2*i+1]*gear_ratio*rotate_support
-					move_dxl(goal_pos)
-				mean_pres, max_pres, force = get_pres()
-
 		# open scissors
 		print('press y to open the scissors')
 		keypress = getch()
-		if keypress == chr(0x1b):
-			print('Escaped from grasping')
-		elif keypress == 'y':
+		if keypress == 'y':
 			goal_pos[0] += motor_direction[0]*rotate_open
 			goal_pos[1] += motor_direction[1]*gear_ratio*rotate_open
 			move_dxl(goal_pos)
@@ -140,7 +155,7 @@ while cutting:
 				print('Escaped from grasping')
 				break
 			elif keypress == 'y':
-				goal_pos[0] += rotate_close
+				goal_pos[0] += rotate_close_increment
 				move_dxl(goal_pos)
 
 	if UR5_on == True:
@@ -149,6 +164,12 @@ while cutting:
 		keypress = getch()
 		if keypress == 'y':
 			robot.arm.move_ee_xyz(-goal_ee, wait=True)
+	
+	print('To shut down motors, press ESC, otherwise press any other key')
+	keypress = getch()
+	if keypress == chr(0x1b):
+		print('Escaped from grasping')
+		break
 
 if DXL_on == True:
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
