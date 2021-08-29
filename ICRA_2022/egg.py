@@ -41,9 +41,7 @@ class read_pts:
     y_start = [0,3,6,10]
     y_end   = [3,6,9,12]
 p_thresh = 20
-p_margin = 0
 f_thresh = 30
-f_margin = 0
 
 # !!! change to multithread so fingers can move simultaneously?
 
