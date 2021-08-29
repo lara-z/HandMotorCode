@@ -17,6 +17,7 @@ def check_pressure():
 	
 
 # check port using:    python -m serial.tools.list_ports
+# ls /dev/ttyUSB*
 COM_PORT = '/dev/ttyUSB0'
 
 sensor_on = False

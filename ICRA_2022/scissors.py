@@ -15,6 +15,8 @@ DXL_on = True
 sensor_on = False
 cutting = True
 
+# check port using:    python -m serial.tools.list_ports
+# ls /dev/ttyUSB*
 com_port_dxl = '/dev/ttyUSB1'
 com_port_sensor = '/dev/ttyUSB0'
 

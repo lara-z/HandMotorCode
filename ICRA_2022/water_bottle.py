@@ -12,6 +12,8 @@ DXL_on = True
 sensor_on = True
 mode = 'manual' # auto
 
+# check port using:    python -m serial.tools.list_ports
+# ls /dev/ttyUSB*
 com_port_dxl = '/dev/ttyUSB1' # !!! update
 com_port_sensor = '/dev/ttyUSB0' # !!! update
 

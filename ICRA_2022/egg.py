@@ -9,6 +9,8 @@ UR5_on = False
 DXL_on = True
 sensor_on = True
 
+# check port using:    python -m serial.tools.list_ports
+# ls /dev/ttyUSB*
 com_port_dxl = '/dev/ttyUSB2' # !!! update
 com_port_sensor = '/dev/ttyUSB1' # !!! update
 
