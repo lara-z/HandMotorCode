@@ -1,5 +1,7 @@
+# hand will accept scissors for mounting, open scissors, UR5 arm will move forward,
+# scissors will close if it cutting paper (requires lower pressure), open, ur5 arm will
+# move forward, cutting will repeat
 # scissor manipulator must be placed so that fingers are exactly vertical as starting position
-#!!! determine where in the room the cut_direction_index will cause the arm to move (if it's in the positive or negative direction)
 
 import time
 # import airobot as ar
@@ -13,8 +15,8 @@ DXL_on = True
 sensor_on = False
 cutting = True
 
-com_port_dxl = 'COM3'
-com_port_sensor = 'COM1'
+com_port_dxl = '/dev/ttyUSB1'
+com_port_sensor = '/dev/ttyUSB0'
 
 # establish UR5 variables
 scissor_blade_length = float(0.06) # float(input('Enter the scissor blade length in the same coordinates as UR5 Cartesian coordinates:  ')) # !!!
@@ -42,10 +44,10 @@ threshold_support = 10 # !!! update threshold pressure to ensure that two side f
 threshold_closed = 10 # pressure required to say scissors are fully closed
 class read_pts:
 	# order: palmar thumb, dorsal thumb, palmar pointer, palmar middle finger
-    x_start = [2,0,6,4]
-    x_end   = [4,2,8,6]
-    y_start = [0,3,6,10]
-    y_end   = [3,6,9,12]
+    x_start = [4,6,2,0]
+    x_end   = [6,8,4,2]
+    y_start = [8,8,4,0]
+    y_end   = [12,12,8,4]
 
 # !!! make a function to adjust distal joint when proximal joint moves for a specified joint
 
