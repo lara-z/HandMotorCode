@@ -310,6 +310,10 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 	# 	shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
 	# 	print('The motors have been shut down')
 
+	# get present position
+	dxl_present_position = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
+		
+
 	if print_currvolt == True:
 		print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
 

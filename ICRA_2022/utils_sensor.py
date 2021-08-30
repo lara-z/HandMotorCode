@@ -61,18 +61,20 @@ def initialize_sensor(sensor_port, visualize, read_pts):
     # temporarily set the pressure and force calibration values to 0
     p_zero = np.zeros(len(read_pts.x_start))
     f_zero = np.zeros(len(read_pts.x_start))
+    x_zero = np.zeros(len(read_pts.x_start))
 
     # get initial pressure reading to calibrate sensor value
-    p_zero, _, f_zero = read_pres(p_zero, f_zero, args, ser, read_pts, initializing=True)
+    p_zero, _, f_zero, x_zero = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, initializing=True)
     print('Sensor initialized')
 
-    return args, ser, p_zero, f_zero
+    return args, ser, p_zero, f_zero, x_zero
 
-def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializing=False):
+def read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=False, initializing=False):
     # read pressure from the sensor once the sensor has been initialized
     mean_press = np.zeros(len(read_pts.x_start))
     max_press = np.zeros(len(read_pts.x_start))
     force = np.zeros(len(read_pts.x_start))
+    x_avg = [0]*len(read_pts.x_start)
     x = [0]*len(read_pts.x_start)
 
     # take an average reading over time to calibrate zero pressure when initializing
@@ -103,9 +105,13 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
                 x[i] = data[read_pts.x_start[i]:read_pts.x_end[i],read_pts.y_start[i]:read_pts.y_end[i]]
 
                 # calculate force and pressure
-                mean_press[i] += x[i].mean()
-                max_press[i] += x[i].max()
-                force[i] += x[i].sum()
+                # mean_press[i] += x[i].mean()
+                # max_press[i] += x[i].max()
+                # force[i] += x[i].sum()
+                mean_press[i] += np.mean(x[i] - x_zero[i])
+                max_press[i] += np.max(x[i] - x_zero[i])
+                force[i] += np.sum(x[i] - x_zero[i])
+                x_avg[i] += (x[i] - x_zero[i])
         count += 1
 
     if initializing == True:
@@ -113,9 +119,13 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
 
     # calculate zero-ed force and pressure
     for i in range(len(read_pts.x_start)):
-        mean_press[i] = round(((mean_press[i]/count) - p_zero[i]),1)
-        max_press[i] = round(((max_press[i]/count) - p_zero[i]),1)
-        force[i] = round((force[i]/count) - f_zero[i])
+        # mean_press[i] = round(((mean_press[i]/count) - p_zero[i]),1)
+        # max_press[i] = round(((max_press[i]/count) - p_zero[i]),1)
+        # force[i] = round((force[i]/count) - f_zero[i])
+        mean_press[i] = np.round((mean_press[i]/count))
+        max_press[i] = np.round((max_press[i]/count))
+        force[i] = np.round((force[i]/count))
+        x_avg[i] = np.round(x_avg[i]/count)
 
         if i > 0:
             vis_data = np.concatenate((vis_data,x[i] - p_zero[i]),axis=1)
@@ -134,5 +144,4 @@ def read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False, initializin
         print('mean pressure', mean_press, 'max.pressure : ' ,max_press, ', force: ', force)
         # print("Time elapsed:", time.time() - st_time)
 
-
-    return mean_press, max_press, force
+    return mean_press, max_press, force, x_avg
