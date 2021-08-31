@@ -14,27 +14,32 @@ mode = 'manual' # auto
 
 # check port using:    python -m serial.tools.list_ports
 # ls /dev/ttyUSB*
-com_port_dxl = '/dev/ttyUSB1' # !!! update
-com_port_sensor = '/dev/ttyUSB0' # !!! update
+com_port_dxl = '/dev/ttyUSB0' # !!! update
+com_port_sensor = '/dev/ttyUSB1' # !!! update
 
 # establish UR5 variables
 start_pos = [] # !!! find good start position in joint coordinates
 wrist_ind = 0
+x_ind = 0 # index for z-axis
+z_ind = 2 # index for z-axis
+table_height = 0.1 # height of gripper from table
+withdraw_dist = 0.1 # amount to withdraw arm after releasing bottle
 
 # establish dxl variables
 operating_mode = 'current_position'
-current_des = amps2curr(1.2)	# for current-based position control
-current_lim = amps2curr(1.5)	# for current-based position control
+current_des = amps2curr(2.5)	# for current-based position control
+current_lim = amps2curr(2.8)	# for current-based position control
 motor_ids = [12,13,14]
 motor_direction = [-1, 1, -1]
 adduct_ind = 1
-rotate_amount = 15
+rotate_amount = 20
 rotate_adduct = 3
-rotate_limit = 400
+rotate_limit = 1000
+rotate_open = 200
 rotate_adduct_limit = 120
 
 # establish sensor variables
-visualize = True
+visualize = False
 num_fing = len(motor_ids)
 pres = [0]*num_fing
 class read_pts:
@@ -49,14 +54,17 @@ tilt_options = ['level', 'little', 'lots']
 tilt_thresh = [0, 10, 20] # !!! calibrate
 tilt_num = 1 #int(input('Enter tilt integer from 0 (level) to 2 (very tilted):  '))
 threshold = tilt_thresh[tilt_num]
-grasp_thresh_p = 200 # !!! change to real value
+full_thresh_p = 12
+bottle_p = 0 # average maximum pressure the bottle exerts, compared to full_thres_p to determine if full or empty
+grasp_thresh_p = 70 # !!! change to real value
 grasp_thresh_f = 200 # !!! change to real value
+bottle_status = '' # options are 'full' or 'empty' once bottle weight is measured
 
 def calc_pres():
 	# read pressure in each finger
 	if sensor_on == True:
 		# 0 is the top finger
-		mean_pres, max_pres, force = read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=True)
+		mean_pres, max_pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
 		# pressure[1] -= pressure[0]
 		# pressure[2] -= pressure[0]
 	else:
@@ -67,7 +75,7 @@ def calc_pres():
 
 def move_dxl(dxl_goal):
 	# move motors to goal position
-	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=False, limits = dxl_limits)
+	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=False)
 
 def adjust(dxl_goal, pressure, thresh):
 	# might need to make the pressure difference a percentage of pressure: as liquid leaves the bottle...
@@ -106,7 +114,7 @@ if DXL_on == True:
 	motor_pos, goal_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_ids, com_port_dxl, operating_mode, current_des, current_lim)
 	motor_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 if sensor_on == True:
-	args, ser, p_zero, f_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
+	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
 else:
 	p_zero = np.zeros(num_fing)
 	f_zero = np.zeros(num_fing)
@@ -118,13 +126,34 @@ for i in range(num_fing):
 
 mean_pres, max_pres, force = calc_pres()
 
-# open hand to put in bottle
-for i in range(1,num_fing):
-	goal_pos[i] -= motor_direction[i]*0.43*rotate_limit
-move_dxl(goal_pos)
+# # open hand to put in bottle
+# for i in range(1,num_fing):
+# 	goal_pos[i] -= motor_direction[i]*rotate_open
+# move_dxl(goal_pos)
+
+# check if bottle is full
+if sensor_on == True:
+	print('press any key to indicate that the bottle has been mounted')
+	getch()
+	print('Detecting whether bottle is full or empty. One moment...')
+	data_pts = 20
+	for i in range(data_pts):
+		_, max_pres, _ = calc_pres()
+		bottle_p += max_pres
+	bottle_p = bottle_p/data_pts
+	if (np.sum(bottle_p[1::] >= full_thresh_p) == 2):
+		bottle_status = 'full'
+	else:
+		bottle_status = 'empty'
+else:
+	bottle_status = 'empty'
+
+print('')
+print('bottle status determined: ', bottle_status)
+print('')
 
 # close fingers around bottle until pressure threshold is reached
-while (np.sum(force[1::] >= grasp_thresh_f) < 2) or (np.sum(max_pres[1::] >= grasp_thresh_p) < 2):
+while (np.sum(max_pres[1::] >= grasp_thresh_p) < 2):
 	# print('press y to move the fingers or press ESC to stop closing grasp')
 	# keypress = getch()
 	# if keypress == chr(0x1b):
@@ -137,25 +166,32 @@ while (np.sum(force[1::] >= grasp_thresh_f) < 2) or (np.sum(max_pres[1::] >= gra
 			goal_pos[i] += motor_direction[i]*rotate_amount
 	move_dxl(goal_pos)
 	mean_pres, max_pres, force = calc_pres()
+grasp_pos = goal_pos.copy() # remember this pose to return bottle to level later
 print('The bottle has been grasped')
 
-while True:
-	# specify tilt amount and bottle will (hopefully) achieve it
-	print('press ESC to end code, c to change tilt level, p to pour, or v to rotate the bottle to vertical')
-	keypress = getch()
-	if keypress == chr(0x1b):
-		break
-	elif keypress == 'c':
-    	# change desired tilt
-		tilt_num = int(input('Enter tilt integer from 0 (level) to 2 (very tilted):  '))
-		threshold = tilt_thresh[tilt_num] # !!! change threshold to force
-	elif keypress == 'p':
-		adjust(goal_pos, pres, threshold)
-	elif keypress == 'v':
-		# rotate UR5 arm to bring bottle to vertical?
-		goal_pos = start_pos
-		goal_pos[wrist_ind] += np.pi/2
-		# UR5 arm go to start position
-		robot.arm.set_jpos(goal_pos, wait=True)
+if bottle_status == 'full':
+	# pour water
+	adjust(goal_pos, pres, threshold)
+	move_dxl(grasp_pos)
+
+if UR5_on == True:
+	# set bottle on table
+	goal_pos = start_pos.copy()
+	# make bottle vertical
+	goal_pos[wrist_ind] += np.pi/2
+	robot.arm.set_jpos(goal_pos, wait=True)
+	# set on table
+	ee_xyz = [0]*3
+	ee_xyz[z_ind] = -table_height
+	robot.arm.move_ee_xyz(ee_xyz, wait=True)
+	# release bottle
+	for i in range(1,num_fing):
+		goal_pos[i] -= motor_direction[i]*rotate_open
+	move_dxl(goal_pos)
+	# withdraw arm
+	ee_xyz = [0]*3
+	ee_xyz[x_ind] = -withdraw_dist
+	robot.arm.move_ee_xyz(ee_xyz, wait=True)
+
 
 shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
