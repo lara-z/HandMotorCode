@@ -171,8 +171,12 @@ print('The bottle has been grasped')
 
 if bottle_status == 'full':
 	# pour water
-	adjust(goal_pos, pres, threshold)
-	move_dxl(grasp_pos)
+	goal_pos[0] += motor_direction[0]*rotate_adduct # move top finger left
+	goal_pos[1] += motor_direction[1]*rotate_amount # move left finger down
+	move_dxl(goal_pos)
+	time.sleep(3.0)
+print('poured water')
+move_dxl(grasp_pos)
 
 if UR5_on == True:
 	# set bottle on table

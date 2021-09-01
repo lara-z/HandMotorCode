@@ -11,8 +11,8 @@ sensor_on = True
 
 # check port using:    python -m serial.tools.list_ports
 # ls /dev/ttyUSB*
-com_port_dxl = '/dev/ttyUSB2' # !!! update
-com_port_sensor = '/dev/ttyUSB1' # !!! update
+com_port_dxl = '/dev/ttyUSB0'
+com_port_sensor = '/dev/ttyUSB1'
 
 # establish UR5 variables
 ee_start_pos = [] # !!! find good start position
@@ -48,7 +48,7 @@ f_thresh = 30
 # !!! change to multithread so fingers can move simultaneously?
 
 def get_pres():
-	mean_pres, max_pres, force = read_pres(p_zero, f_zero, args, ser, read_pts, print_pres=False)
+	mean_pres, max_pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
 	return mean_pres, max_pres, force
 
 def move_dxl(dxl_goal):
@@ -61,7 +61,7 @@ if UR5_on == True:
 	robot.arm.set_jpos(ee_start_pos, wait=True)
 
 if sensor_on == True:
-	args, ser, p_zero, f_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
+	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
 
 # initialize dynamixel and open fingers
 if DXL_on == True:
