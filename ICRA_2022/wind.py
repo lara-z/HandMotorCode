@@ -22,7 +22,7 @@
 from utils import *
 
 # com_num = '/dev/ttyUSB0'
-com_num = 'COM3'
+com_num = '/dev/ttyUSB0'
 
 # comment out one of the lines below to change operating mode
 operating_mode = 'current_position' # current-based position control

@@ -29,7 +29,7 @@ operating_mode = 'current_position'
 current_des = amps2curr(2.8)	# for current-based position control
 current_lim = amps2curr(3.0)	# for current-based position control
 motor_ids = [8,11,5,2,6,10] # !!! [prox thumb joint, dist thumb joint, prox pointer joint, dist pointer joint, prox middle finger joint, dist middle finger joint]
-motor_direction = [1,0,1,-1,1,0] # make values -1 in case agonist or antagonist cables were switched during assembly
+motor_direction = [1,-1,1,-1,1,-1] # make values -1 in case agonist or antagonist cables were switched during assembly
 gear_ratio = -1.1
 rotate_right_angle = 375 # !!! update with correct number, amount to rotate distal joints 90 degrees
 rotate_support = deg2pulse(5) # !!! update with correct number
@@ -107,8 +107,11 @@ if DXL_on == True:
 	keypress = getch()
 	if keypress == 'y':
 		# close distal joints
+		print(goal_pos)
 		for i in range(1,len(goal_pos),2):
+			print(i)
 			goal_pos[i] += motor_direction[i]*rotate_right_angle
+		print(goal_pos)
 		mean_pres, max_pres, force = get_pres()
 		goal_pos = move_dxl(goal_pos)
 

@@ -14,8 +14,8 @@ mode = 'manual' # auto
 
 # check port using:    python -m serial.tools.list_ports
 # ls /dev/ttyUSB*
-com_port_dxl = '/dev/ttyUSB0' # !!! update
-com_port_sensor = '/dev/ttyUSB1' # !!! update
+com_port_dxl = '/dev/ttyUSB0'
+com_port_sensor = '/dev/ttyUSB1'
 
 # establish UR5 variables
 start_pos = [] # !!! find good start position in joint coordinates
