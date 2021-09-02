@@ -21,6 +21,7 @@ com_port_dxl = '/dev/ttyUSB0'
 com_port_sensor = '/dev/ttyUSB1'
 
 # establish UR5 variables
+start_ur5 = [1.5286102294921875, -2.384364744225973, -1.4049272537231445, -0.9217203420451661, 0.04831552505493164, 0.6629600524902344]
 scissor_blade_length = float(0.06) # float(input('Enter the scissor blade length in the same coordinates as UR5 Cartesian coordinates:  ')) # !!!
 cut_direction_index = 0 # axis (x, y, z) that the UR5 arm should move in to cut (right now x axis)
 

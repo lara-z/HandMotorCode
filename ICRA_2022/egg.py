@@ -5,19 +5,22 @@ import numpy as np
 from utils import *
 from utils_sensor import *
 
-UR5_on = False
+UR5_on = True
 DXL_on = True
-sensor_on = True
+sensor_on = False
 
 # check port using:    python -m serial.tools.list_ports
 # ls /dev/ttyUSB*
-com_port_dxl = '/dev/ttyUSB0'
+com_port_dxl = '/dev/ttyS0' # '/dev/ttyUSB0'
 com_port_sensor = '/dev/ttyUSB1'
 
 # establish UR5 variables
-ee_start_pos = [] # !!! find good start position
+ee_start_pos = [1.3510046005249023, -2.42978634456777, -1.0763025283813477, -1.229790524845459, 1.5926413536071777, 0.5379843711853027]
+ee_twist_pos = [1.802238941192627, -2.489427228967184, -0.715703010559082, -2.9041978321471156, 0.32659387588500977, 2.0060067176818848+0.2]
+ee_twist_pos_rot = ee_twist_pos
+ee_twist_pos_rot[-1] -= np.pi/2
 lift_ind = 2
-lift_amount = 0.2
+lift_amount = -0.109
 ee_xyz = [0]*3
 ee_xyz[lift_ind] = lift_amount
 
@@ -54,11 +57,27 @@ def get_pres():
 def move_dxl(dxl_goal):
 	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=True, limits = dxl_limits)
 
+def shake():
+	# shake ur5 arm to show egg can't drop
+    sleep=False
+    move_ur5(0.3*ee_xyz,sleep)
+    move_ur5(-0.3*ee_xyz,sleep)
+    move_ur5(0.3*ee_xyz,sleep)
+    move_ur5(-0.3*ee_xyz,sleep)
+
+def move_ur5(ur5_goal,sleep=True):
+	if len(ur5_goal) == 3:
+		robot.arm.move_ee_xyz(ur5_goal, wait=True)
+	else:
+		robot.arm.set_jpos(ur5_goal, wait=True)
+	if sleep == True:
+		time.sleep(1.5)
+
 # robot = ar.Robot('ur5e', pb=False, use_cam=False)
 
 # UR5 arm go to start position
 if UR5_on == True:
-	robot.arm.set_jpos(ee_start_pos, wait=True)
+	move_ur5(ee_start_pos)
 
 if sensor_on == True:
 	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
@@ -77,7 +96,7 @@ if DXL_on == True:
 
 # UR5 arm move to egg
 if UR5_on == True:
-	robot.arm.move_ee_xyz(-ee_xyz, wait=True)
+	move_ur5(ee_xyz)
 
 # read pressures
 if sensor_on == True:
@@ -112,11 +131,20 @@ if DXL_on == True:
 
 		print('Finished grasping')
 
-# lift egg, pause, put back down
+# lift egg, pause, rotate, shake, put back down
 if UR5_on == True:
-	robot.arm.move_ee_xyz(ee_xyz, wait=True)
-	time.sleep(1.0)
-	robot.arm.move_ee_xyz(-ee_xyz, wait=True)
+	# lift
+	move_ur5(-ee_xyz)
+	# twist to show egg bottom
+	move_ur5(ee_twist_pos)
+	shake()
+	# rotate wrist 90 deg
+	move_ur5(ee_twist_pos)
+	shake()
+	# move wrist back to starting position
+	move_ur5(ee_start_pos)
+	# move arm down
+	robot.arm.move_ee_xyz(ee_xyz)
 
 # release egg
 print('Fingers will release egg')
@@ -137,3 +165,6 @@ if DXL_on == True:
 		move_dxl(motor_pos)
 
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+
+# move arm back up to starting position
+move_ur5(ee_start_pos)
