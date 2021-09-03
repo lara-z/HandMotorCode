@@ -1,36 +1,37 @@
 import time
-# import airobot as ar
-# from airobot import Robot
+import airobot as ar
+from airobot import Robot
 import numpy as np
 from utils import *
 from utils_sensor import *
 
 UR5_on = True
 DXL_on = True
-sensor_on = False
+sensor_on = True
 
-# check port using:    python -m serial.tools.list_ports
-# ls /dev/ttyUSB*
-com_port_dxl = '/dev/ttyS0' # '/dev/ttyUSB0'
-com_port_sensor = '/dev/ttyUSB1'
+# check port using:    dmesg
+com_port_dxl = '/dev/ttyUSB1' # '/dev/ttyUSB0'
+com_port_sensor = '/dev/ttyUSB0'
 
 # establish UR5 variables
-ee_start_pos = [1.3510046005249023, -2.42978634456777, -1.0763025283813477, -1.229790524845459, 1.5926413536071777, 0.5379843711853027]
-ee_twist_pos = [1.802238941192627, -2.489427228967184, -0.715703010559082, -2.9041978321471156, 0.32659387588500977, 2.0060067176818848+0.2]
-ee_twist_pos_rot = ee_twist_pos
-ee_twist_pos_rot[-1] -= np.pi/2
+ee_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
+ee_twist_pos_1 = [1.8218579292297363, -2.4279991588988246, -0.9796571731567383, -2.820000787774557, 0.255401611328125, -0.8206332365619105]
+ee_twist_pos_2 = np.copy(ee_twist_pos_1)
+ee_twist_pos_2[-1] += np.pi/2
+ee_twist_pos_3 = np.copy(ee_twist_pos_1)
+ee_twist_pos_3[-1] += np.pi
 lift_ind = 2
-lift_amount = -0.109
-ee_xyz = [0]*3
+lift_amount = -10.4/100
+ee_xyz = np.zeros(3)
 ee_xyz[lift_ind] = lift_amount
 
 # establish dxl variables
 operating_mode = 'current_position'
-current_des = amps2curr(2.8)	# for current-based position control
-current_lim = amps2curr(3.0)	# for current-based position control
+current_des = amps2curr(2.0)	# for current-based position control
+current_lim = amps2curr(2.5)	# for current-based position control
 rotate_amount = deg2pulse(5)	# amount that motor rotates to close grasp around egg
-rotate_limit_ag = 450 # !!! 350
-rotate_limit_an = deg2pulse(30) # !!! update
+rotate_limit_ag = 650 # !!! 350
+rotate_limit_an = deg2pulse(30)                                # !!! update
 motor_ids = [4,7,1,3]
 motor_direction = [-1,1,-1,-1] # make values -1 in case agonist or antagonist cables were switched during assembly
 dxl_limits = [0]*len(motor_ids)
@@ -55,7 +56,7 @@ def get_pres():
 	return mean_pres, max_pres, force
 
 def move_dxl(dxl_goal):
-	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=True, limits = dxl_limits)
+	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=False, limits = dxl_limits)
 
 def shake():
 	# shake ur5 arm to show egg can't drop
@@ -73,12 +74,12 @@ def move_ur5(ur5_goal,sleep=True):
 	if sleep == True:
 		time.sleep(1.5)
 
-# robot = ar.Robot('ur5e', pb=False, use_cam=False)
-
 # UR5 arm go to start position
 if UR5_on == True:
+	robot = ar.Robot('ur5e', pb=False, use_cam=False)
 	move_ur5(ee_start_pos)
 
+# initialize sensors
 if sensor_on == True:
 	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
 
@@ -136,10 +137,13 @@ if UR5_on == True:
 	# lift
 	move_ur5(-ee_xyz)
 	# twist to show egg bottom
-	move_ur5(ee_twist_pos)
+	move_ur5(ee_twist_pos_1)
 	shake()
 	# rotate wrist 90 deg
-	move_ur5(ee_twist_pos)
+	move_ur5(ee_twist_pos_2)
+	shake()
+	# rotate wrist 180 deg
+	move_ur5(ee_twist_pos_3)
 	shake()
 	# move wrist back to starting position
 	move_ur5(ee_start_pos)
@@ -157,14 +161,18 @@ if DXL_on == True:
 	if keypress == chr(0x1b):
 		print('Escaped from grasping')
 	elif keypress == 'y':
+		# reset motors because they usually error can therefore won't release the egg
+		reboot(packetHandler, portHandler, motor_ids, com_port_dxl, operating_mode)
+		shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+		_, _, packetHandler, portHandler, groupBulkWrite, groupBulkRead, _, _ = initialize(motor_ids, com_port_dxl, operating_mode, current_des, current_lim)
+		# release egg
 		move_dxl(goal_pos)
 
-		time.sleep(1.0)
-		print('Move motors away from egg. Fingers will now return to original position')
+if UR5_on:
+	# move arm back up to starting position
+	move_ur5(ee_start_pos)
 
-		move_dxl(motor_pos)
-
+if DXL_on:
+	# move fingers back to start position
+	move_dxl(motor_pos)
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
-
-# move arm back up to starting position
-move_ur5(ee_start_pos)

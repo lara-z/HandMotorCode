@@ -16,10 +16,6 @@ def shake():
     move_ur5(-0.3*ee_xyz,sleep)
     move_ur5(0.3*ee_xyz,sleep)
     move_ur5(-0.3*ee_xyz,sleep)
-	# robot.arm.move_ee_xyz(0.3*ee_xyz, wait=True)
-	# robot.arm.move_ee_xyz(-0.3*ee_xyz, wait=True)
-	# robot.arm.move_ee_xyz(0.3*ee_xyz, wait=True)
-	# robot.arm.move_ee_xyz(-0.3*ee_xyz, wait=True)
 
 def move_ur5(ur5_goal,sleep=True):
 	if len(ur5_goal) == 3:
@@ -29,8 +25,8 @@ def move_ur5(ur5_goal,sleep=True):
 	if sleep == True:
 		time.sleep(1.5)
 
-ee_start_pos = [1.3510046005249023, -2.42978634456777, -1.0763025283813477, -1.229790524845459, 1.5926413536071777, 0.5379843711853027]
-ee_twist_pos = [1.802238941192627, -2.489427228967184, -0.715703010559082, -2.9041978321471156, 0.32659387588500977, 2.0060067176818848+0.2]
+ee_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
+ee_twist_pos = [1.8218579292297363, -2.4279991588988246, -0.9796571731567383, -2.820000787774557, 0.255401611328125, -0.8206332365619105]
 ee_twist_pos_rot = np.copy(ee_twist_pos)
 ee_twist_pos_rot[-1] -= np.pi/2
 lift_ind = 2
@@ -39,18 +35,19 @@ ee_xyz = np.zeros(3)
 ee_xyz[lift_ind] = lift_amount
 
 move_ur5(ee_start_pos)
-move_ur5(ee_xyz)
-# lift
-move_ur5(-ee_xyz)
-# twist to show egg bottom
-move_ur5(ee_twist_pos)
-shake()
-# rotate wrist 90 deg
-move_ur5(ee_twist_pos_rot)
-shake()
-# move wrist back to starting position
-move_ur5(ee_start_pos)
-robot.arm.move_ee_xyz(ee_xyz)
+# move_ur5(ee_xyz)
+# # lift
+# move_ur5(-ee_xyz)
+# # twist to show egg bottom
+# move_ur5(ee_twist_pos)
+# shake()
+# # rotate wrist 90 deg
+# move_ur5(ee_twist_pos_rot)
+# shake()
+# # move wrist back to starting position
+# move_ur5(ee_start_pos)
+# robot.arm.move_ee_xyz(ee_xyz)
+# robot.arm.move_ee_xyz(-ee_xyz)
 
 # # go to joint goal pose
 # goal_pos = [1.3510046005249023, -2.42978634456777, -1.0763025283813477, -1.229790524845459, 1.5926413536071777, 0.5379843711853027]

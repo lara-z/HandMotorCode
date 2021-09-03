@@ -110,9 +110,10 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=500, CURRENT_LI
 		elif operating_mode == 'current_position':
 			print("All dynamixel operating modes have been successfully changed to current-based position control")
 	else:
-		print('Error(s) encountered. Shutting down motors...')
+		print('Error(s) encountered. Rebooting and shutting down motors...')
+		reboot(packetHandler, portHandler, DXL_IDS, com_num, operating_mode)
 		shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
-		print('PLEASE RE-RUN CODE. The motor error should now be fixed (torque has been turned off)')
+		print('PLEASE RE-RUN CODE. The motor error should now be fixed')
 		quit()
 
 	if operating_mode == 'current_position':
@@ -219,6 +220,12 @@ def shut_down(DXL_IDS, packetHandler, portHandler, groupBulkRead, ADDR, LEN, ask
 
 	# Close port
 	portHandler.closePort()
+
+def reboot(packetHandler, portHandler, DXL_IDS, com_num, operating_mode):
+	for id in DXL_IDS:
+		packetHandler.reboot(portHandler,id)
+	# dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(DXL_IDS, com_num, operating_mode)
+	# return dxl_present_position, dxl_goal_position, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN
 
 def calc_torque(DXL_IDS, ifprint, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN):
 	# calculate the torque based on measured current
