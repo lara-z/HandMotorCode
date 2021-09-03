@@ -4,11 +4,13 @@ import numpy as np
 import copy
 import airobot as ar
 from airobot import Robot
+# from utils_ur5 import *
 
 robot = ar.Robot('ur5e', pb=False, use_cam=False)
 print('Current joint coordinates:')
 print(robot.arm.get_jpos())
 
+# shake()
 def shake():
 	# shake ur5 arm to show egg can't drop
     sleep=False
@@ -25,16 +27,27 @@ def move_ur5(ur5_goal,sleep=True):
 	if sleep == True:
 		time.sleep(1.5)
 
-ee_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
-ee_twist_pos = [1.8218579292297363, -2.4279991588988246, -0.9796571731567383, -2.820000787774557, 0.255401611328125, -0.8206332365619105]
-ee_twist_pos_rot = np.copy(ee_twist_pos)
-ee_twist_pos_rot[-1] -= np.pi/2
-lift_ind = 2
-lift_amount = -0.109
-ee_xyz = np.zeros(3)
-ee_xyz[lift_ind] = lift_amount
 
-move_ur5(ee_start_pos)
+start_pos1 = [1.3283896446228027, -2.2250029049315394, -1.8629846572875977, -2.2158452473082484, -1.740652863179342, -0.7816255728351038]
+start_pos2 = [1.3281621932983398, -2.5985170803465785, -1.7919988632202148, -1.9135986767210902, -1.7407367865191858, -0.783447567616598]
+start_pos3 = [1.3709359169006348, -2.702686449090475, -1.4833993911743164, -2.117897172967428, -1.6987865606891077, -0.7813981215106409]
+print('will move to start pos 1')
+move_ur5(start_pos1)
+print('will move to start pos 2')
+move_ur5(start_pos2)
+print('will move to start pos 3')
+move_ur5(start_pos3)
+
+# ee_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
+# ee_twist_pos = [1.8218579292297363, -2.4279991588988246, -0.9796571731567383, -2.820000787774557, 0.255401611328125, -0.8206332365619105]
+# ee_twist_pos_rot = np.copy(ee_twist_pos)
+# ee_twist_pos_rot[-1] -= np.pi/2
+# lift_ind = 2
+# lift_amount = -0.109
+# ee_xyz = np.zeros(3)
+# ee_xyz[lift_ind] = lift_amount
+
+# move_ur5(ee_start_pos)
 # move_ur5(ee_xyz)
 # # lift
 # move_ur5(-ee_xyz)

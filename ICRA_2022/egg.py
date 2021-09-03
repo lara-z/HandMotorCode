@@ -14,7 +14,12 @@ com_port_dxl = '/dev/ttyUSB1' # '/dev/ttyUSB0'
 com_port_sensor = '/dev/ttyUSB0'
 
 # establish UR5 variables
-ee_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
+egg_pos = 'holder' # options are 'holder' or 'ground'
+class holder:
+	start_pos1 = [1.3283896446228027, -2.2250029049315394, -1.8629846572875977, -2.2158452473082484, -1.740652863179342, -0.7816255728351038]
+	start_pos2 = [1.3281621932983398, -2.5985170803465785, -1.7919988632202148, -1.9135986767210902, -1.7407367865191858, -0.783447567616598] # arm goes down level with the table
+	start_pos3 = [1.3709359169006348, -2.702686449090475, -1.4833993911743164, -2.117897172967428, -1.6987865606891077, -0.7813981215106409] # arm moves up to egg
+ground_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
 ee_twist_pos_1 = [1.8218579292297363, -2.4279991588988246, -0.9796571731567383, -2.820000787774557, 0.255401611328125, -0.8206332365619105]
 ee_twist_pos_2 = np.copy(ee_twist_pos_1)
 ee_twist_pos_2[-1] += np.pi/2
@@ -77,7 +82,10 @@ def move_ur5(ur5_goal,sleep=True):
 # UR5 arm go to start position
 if UR5_on == True:
 	robot = ar.Robot('ur5e', pb=False, use_cam=False)
-	move_ur5(ee_start_pos)
+	if egg_pos == 'holder':
+		move_ur5(holder.start_pos1)
+	elif egg_pos == 'ground':
+		move_ur5(ground_start_pos)
 
 # initialize sensors
 if sensor_on == True:
@@ -97,7 +105,12 @@ if DXL_on == True:
 
 # UR5 arm move to egg
 if UR5_on == True:
-	move_ur5(ee_xyz)
+	robot = ar.Robot('ur5e', pb=False, use_cam=False)
+	if egg_pos == 'holder':
+		move_ur5(holder.start_pos2)
+		move_ur5(holder.start_pos3)
+	elif egg_pos == 'ground':
+		move_ur5(ee_xyz)
 
 # read pressures
 if sensor_on == True:
@@ -136,6 +149,7 @@ if DXL_on == True:
 if UR5_on == True:
 	# lift
 	move_ur5(-ee_xyz)
+	lifted_pos = robot.arm.get_jpos()
 	# twist to show egg bottom
 	move_ur5(ee_twist_pos_1)
 	shake()
@@ -145,8 +159,8 @@ if UR5_on == True:
 	# rotate wrist 180 deg
 	move_ur5(ee_twist_pos_3)
 	shake()
-	# move wrist back to starting position
-	move_ur5(ee_start_pos)
+	# move wrist back to pre-twisted position
+	move_ur5(lifted_pos)
 	# move arm down
 	robot.arm.move_ee_xyz(ee_xyz)
 
