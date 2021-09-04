@@ -14,12 +14,12 @@ com_port_dxl = '/dev/ttyUSB1' # '/dev/ttyUSB0'
 com_port_sensor = '/dev/ttyUSB0'
 
 # establish UR5 variables
-egg_pos = 'holder' # options are 'holder' or 'ground'
+egg_pos = 'ground' # options are 'holder' or 'ground'
 class holder:
 	start_pos1 = [1.3283896446228027, -2.2250029049315394, -1.8629846572875977, -2.2158452473082484, -1.740652863179342, -0.7816255728351038]
 	start_pos2 = [1.3281621932983398, -2.5985170803465785, -1.7919988632202148, -1.9135986767210902, -1.7407367865191858, -0.783447567616598] # arm goes down level with the table
 	start_pos3 = [1.3709359169006348, -2.702686449090475, -1.4833993911743164, -2.117897172967428, -1.6987865606891077, -0.7813981215106409] # arm moves up to egg
-ground_start_pos = [1.355161190032959, -2.4329525432982386, -1.095463752746582, -1.1849048894694825, 1.5603728294372559, -2.5464335123645228]
+ground_start_pos = [1.335421085357666, -2.453303953210348, -1.0673742294311523, -1.2308357518962403, 1.7179417610168457, -2.5687082449542444]
 ee_twist_pos_1 = [1.8218579292297363, -2.4279991588988246, -0.9796571731567383, -2.820000787774557, 0.255401611328125, -0.8206332365619105]
 ee_twist_pos_2 = np.copy(ee_twist_pos_1)
 ee_twist_pos_2[-1] += np.pi/2
@@ -51,8 +51,8 @@ class read_pts:
     x_end   = [4,2,8,6]
     y_start = [0,3,6,10]
     y_end   = [3,6,9,12]
-p_thresh = 20
-f_thresh = 30
+p_thresh = 15
+f_thresh = 25
 
 # !!! change to multithread so fingers can move simultaneously?
 
@@ -99,8 +99,8 @@ if DXL_on == True:
 	for i in range(num_fing):
 		dxl_limits[i] = sorted([int(motor_pos[i]) - motor_direction[i]*rotate_limit_an, int(motor_pos[i]) + motor_direction[i]*rotate_limit_ag])
 	# open fingers to grasp around egg
-	for i in range(0,len(goal_pos)):
-		goal_pos[i] -= int(motor_direction[i]*rotate_limit_an)
+	# for i in range(0,len(goal_pos)):
+	# 	goal_pos[i] -= int(motor_direction[i]*rotate_limit_an)
 	move_dxl(goal_pos)
 
 # UR5 arm move to egg
@@ -184,7 +184,10 @@ if DXL_on == True:
 
 if UR5_on:
 	# move arm back up to starting position
-	move_ur5(ee_start_pos)
+	if egg_pos == 'holder':
+		move_ur5(holder.start_pos1)
+	elif egg_pos == 'ground':
+		move_ur5(ground_start_pos)
 
 if DXL_on:
 	# move fingers back to start position
