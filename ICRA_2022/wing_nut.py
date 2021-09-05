@@ -6,7 +6,7 @@ import numpy as np
 from utils_sensor import *
 
 def check_pressure():
-	_, pres, force = read_pres(p_zero, f_zero, args, ser, read_pts)
+	_, pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
 	if ((pres >= thresh_tight) or (force >= force_tight)):
 		tightening = False
 		print('detected that screw has been tightened')
@@ -18,7 +18,7 @@ def check_pressure():
 
 # check port using:    python -m serial.tools.list_ports
 # ls /dev/ttyUSB*
-COM_PORT = '/dev/ttyUSB0'
+COM_PORT = '/dev/ttyUSB2'
 
 sensor_on = False
 visualize = False
@@ -37,9 +37,9 @@ ang_min = -np.pi/2 # must be more than -pi
 rotate_reset = 1.3*np.pi
 ang_max = ang_min + rotate_reset # must be less than +pi
 z_ind = 2 # index for z-axis
-z_lift_initial = 0.15 # vertical lift in meters
+z_lift_initial = 0.95 # vertical lift in meters
 z_lift = 0.05 # vertical lift in meters
-start_pos = [1.7670063972473145, -2.48062862972402, -1.186873435974121, -1.0956671994975586, 1.550523281097412, ang_min]
+start_pos = [1.7633118629455566, -2.49069943050527, -1.2172584533691406, -0.9916332525065918, 1.575446605682373, ang_min]
 # screw_pos = [-1.2097957769977015, -2.5426417789854945, -1.3618993759155273, -0.8092869085124512, 1.5712904930114746, ang_min]
 move = False
 tightening = True
@@ -49,7 +49,7 @@ robot = ar.Robot('ur5e', pb=False, use_cam=False)
 # set start position and calibrate the sensor
 robot.arm.set_jpos(start_pos, wait=True)
 time.sleep(1.0)
-args, ser, p_zero, f_zero = initialize_sensor(COM_PORT, visualize, read_pts)
+args, ser, p_zero, f_zero, x_zero = initialize_sensor(COM_PORT, visualize, read_pts)
 
 # lower to screw
 ee_xyz = [0]*3
