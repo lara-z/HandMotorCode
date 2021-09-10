@@ -9,7 +9,7 @@ from utils_sensor import *
 
 UR5_on = False
 DXL_on = True
-sensor_on = True
+sensor_on = False
 mode = 'manual' # auto
 
 # check port using:    python -m serial.tools.list_ports
@@ -32,8 +32,9 @@ current_lim = amps2curr(2.8)	# for current-based position control
 motor_ids = [12,13,14]
 motor_direction = [-1, 1, -1]
 adduct_ind = 1
-rotate_amount = 20
-rotate_adduct = 3
+rotate_amount = 30
+rotate_pour = 150
+rotate_adduct = 150
 rotate_limit = 1000
 rotate_open = 200
 rotate_adduct_limit = 120
@@ -154,29 +155,41 @@ print('')
 
 # close fingers around bottle until pressure threshold is reached
 while (np.sum(max_pres[1::] >= grasp_thresh_p) < 2):
-	# print('press y to move the fingers or press ESC to stop closing grasp')
-	# keypress = getch()
-	# if keypress == chr(0x1b):
-	# 	print('Escaped from grasping')
-	# 	break
-	# elif keypress == 'y':
-	for i in range(1,num_fing):
-		# change only the bottom two fingers for the grasp: the top one should stay
-		if force[i] <= grasp_thresh_f:
-			goal_pos[i] += motor_direction[i]*rotate_amount
-	move_dxl(goal_pos)
+	print('press y to move the fingers or press ESC to stop closing grasp')
+	keypress = getch()
+	if keypress == chr(0x1b):
+		print('Escaped from grasping')
+		break
+	elif keypress == 'y':
+		for i in range(1,num_fing):
+			# change only the bottom two fingers for the grasp: the top one should stay
+			if force[i] <= grasp_thresh_f:
+				goal_pos[i] += motor_direction[i]*rotate_amount
+		move_dxl(goal_pos)
 	mean_pres, max_pres, force = calc_pres()
 grasp_pos = goal_pos.copy() # remember this pose to return bottle to level later
 print('The bottle has been grasped')
 
+bottle_status = 'full'
+
 if bottle_status == 'full':
 	# pour water
-	goal_pos[0] += motor_direction[0]*rotate_adduct # move top finger left
-	goal_pos[1] += motor_direction[1]*rotate_amount # move left finger down
+	print('pouring water')
+	goal_pos[0] -= motor_direction[0]*rotate_adduct # move top finger left
+	goal_pos[1] += 0.5*motor_direction[1]*rotate_pour # move right finger down
+	goal_pos[2] -= motor_direction[1]*rotate_pour # move left finger up
+	# goal_pos[2] -= 1.75*motor_direction[2]*rotate_pour # move left finger down
 	move_dxl(goal_pos)
 	time.sleep(3.0)
-print('poured water')
-move_dxl(grasp_pos)
+	print('poured water')
+
+	# return bottle back to level
+	goal_pos[0] += 1.5*motor_direction[0]*rotate_adduct # move top finger left
+	goal_pos[1] -= 0.5*motor_direction[1]*rotate_pour # move right finger up
+	goal_pos[2] += 1.5*motor_direction[1]*rotate_pour # move left finger down
+	# goal_pos[2] += 1.8*1.75*motor_direction[2]*rotate_pour # move left finger down
+	move_dxl(goal_pos)
+	time.sleep(1.0)
 
 if UR5_on == True:
 	# set bottle on table

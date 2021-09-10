@@ -40,7 +40,7 @@ def initialize_sensor(sensor_port, visualize, read_pts):
     parser.add_argument('--port', default=sensor_port)
     parser.add_argument('--inverse', type=int, default=0)
     parser.add_argument('--vis', type=int, default=visualize)
-    parser.add_argument('--store', type=int, default=0)
+    parser.add_argument('--store', type=int, default=1)
     parser.add_argument('--des_path', default='./data')
     parser.add_argument('--time_step', type=int, default=200)
     parser.add_argument('--idx_rec', type=int, default=0)
@@ -59,17 +59,22 @@ def initialize_sensor(sensor_port, visualize, read_pts):
         plt.rcParams["figure.figsize"] = (6, 6)
 
     # temporarily set the pressure and force calibration values to 0
-    p_zero = np.zeros(len(read_pts.x_start))
-    f_zero = np.zeros(len(read_pts.x_start))
-    x_zero = np.zeros(len(read_pts.x_start))
+    class zeros:
+        p = np.zeros(len(read_pts.x_start))
+        f = np.zeros(len(read_pts.x_start))
+        x = np.zeros(len(read_pts.x_start))
+
+    class hist:
+        force = np.zeros(len(read_pts.x_start))
+        max_press = np.zeros(len(read_pts.x_start))
 
     # get initial pressure reading to calibrate sensor value
-    p_zero, _, f_zero, x_zero = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, initializing=True)
+    zeros.p, _, zeros.f, zeros.x, hist = read_pres(zeros, hist, args, ser, read_pts, initializing=True)
     print('Sensor initialized')
 
-    return args, ser, p_zero, f_zero, x_zero
+    return args, ser, zeros, hist
 
-def read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=False, initializing=False):
+def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=False):
     # read pressure from the sensor once the sensor has been initialized
     mean_press = np.zeros(len(read_pts.x_start))
     max_press = np.zeros(len(read_pts.x_start))
@@ -108,10 +113,10 @@ def read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=False, ini
                 # mean_press[i] += x[i].mean()
                 # max_press[i] += x[i].max()
                 # force[i] += x[i].sum()
-                mean_press[i] += np.mean(x[i] - x_zero[i])
-                max_press[i] += np.max(x[i] - x_zero[i])
-                force[i] += np.sum(x[i] - x_zero[i])
-                x_avg[i] += (x[i] - x_zero[i])
+                mean_press[i] += np.mean(x[i] - zeros.x[i])
+                max_press[i] += np.max(x[i] - zeros.x[i])
+                force[i] += np.sum(x[i] - zeros.x[i])
+                x_avg[i] += (x[i] - zeros.x[i])
         count += 1
 
     if initializing == True:
@@ -128,20 +133,24 @@ def read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=False, ini
         x_avg[i] = np.round(x_avg[i]/count)
 
         if i > 0:
-            vis_data = np.concatenate((vis_data,x[i] - p_zero[i]),axis=1)
+            vis_data = np.concatenate((vis_data,x[i] - zeros.x[i]),axis=1)
         else:
-            vis_data = x[i] - p_zero[i]
+            vis_data = x[i] - zeros.x[i]
 
     if ((args.vis==True) and (initializing==False)):
         plt.imshow(vis_data) # 0:13,0:9
         plt.colorbar()
-        plt.clim(0, 150)
+        plt.clim(0, 30)
         plt.draw()
         plt.pause(1e-7)
         plt.gcf().clear()
+
+    if args.store:
+        hist.force = np.vstack([hist.force,force])
+        hist.max_press = np.vstack([hist.max_press,max_press])
 
     if print_pres == True:
         print('mean pressure', mean_press, 'max.pressure : ' ,max_press, ', force: ', force)
         # print("Time elapsed:", time.time() - st_time)
 
-    return mean_press, max_press, force, x_avg
+    return mean_press, max_press, force, x_avg, hist
