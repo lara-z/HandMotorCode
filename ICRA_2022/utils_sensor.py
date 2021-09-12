@@ -159,7 +159,7 @@ def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=F
     return mean_press, max_press, force, x_avg, hist
 
 def save_data(hist,task):
-    now = time.strftime("%H%M%S", time.localtime())
+    now = time.strftime("%m%d%H%M%S", time.localtime())
     np.savetxt("data/"+task+"_hist_force_"+now+".csv",hist.force,delimiter=",")
     np.savetxt("data/"+task+"_hist_pres_"+now+".csv",hist.max_press,delimiter=",")
     print("The data from this run has been saved")

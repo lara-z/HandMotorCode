@@ -10,7 +10,7 @@ class read_pts:
     y_end   = [3,6,9,12]
 visualize = True
 
-args, ser, zeros, hist = initialize_sensor('/dev/ttyUSB1', visualize, read_pts)
+args, ser, zeros, hist = initialize_sensor('/dev/ttyUSB2', visualize, read_pts)
 
 t_start = time.time()
 

@@ -10,8 +10,8 @@ DXL_on = True
 sensor_on = True
 
 # check port using:    dmesg
-com_port_dxl = '/dev/ttyUSB0' # '/dev/ttyUSB0'
-com_port_sensor = '/dev/ttyUSB1'
+com_port_dxl = '/dev/ttyUSB1' # '/dev/ttyUSB0'
+com_port_sensor = '/dev/ttyUSB2'
 
 # establish UR5 variables
 egg_pos = 'ground' # options are 'holder' or 'ground'
@@ -144,6 +144,9 @@ if DXL_on == True:
 				_, pres, force, hist = get_pres(hist)
 
 		print('Finished grasping')
+		print('')
+		print('')
+		print('')
 
 # lift egg, pause, rotate, shake, put back down
 if UR5_on == True:
@@ -163,6 +166,12 @@ if UR5_on == True:
 	move_ur5(lifted_pos)
 	# move arm down
 	robot.arm.move_ee_xyz(ee_xyz)
+
+t_start = time.time()
+t_now = time.time()
+while (t_now - t_start) < 38:
+	_, pres, force, hist = get_pres(hist)
+	t_now = time.time()
 
 # release egg
 print('Fingers will release egg')
@@ -194,4 +203,10 @@ if DXL_on:
 	move_dxl(motor_pos)
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
 
-save_data(hist,"egg")
+if sensor_on:
+	print('Press ESC to avoid saving data, or press any other key to save the data')
+	keypress == getch()
+	if keypress == chr(0x1b):
+		print('you did not save the data')
+	else:
+		save_data(hist,"egg")
