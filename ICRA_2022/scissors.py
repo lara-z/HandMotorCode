@@ -55,15 +55,15 @@ class read_pts:
 
 # !!! make a function to adjust distal joint when proximal joint moves for a specified joint
 
-def get_pres():
+def get_pres(hist):
 	# get pressure reading from sensor or zero reading if sensor isn't attached
 	if sensor_on == True:
-		mean_pres, max_pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
+		mean_pres, pres, force, _, hist = read_pres(zeros, hist, args, ser, read_pts, print_pres=True)
 	else:
 		mean_pres = np.zeros(num_joints)
-		max_pres = np.zeros(num_joints)
+		pres = np.zeros(num_joints)
 		force = np.zeros(num_joints)
-	return mean_pres, max_pres, force
+	return mean_pres, pres, force
 
 def move_dxl(dxl_goal):
 	# convenient handle to move motors
@@ -80,13 +80,13 @@ if DXL_on == True:
 	for i in range(num_joints):
 		dxl_limits[i] = sorted([int(motor_pos[i]) - motor_direction[i]*rotate_limit, int(motor_pos[i]) + motor_direction[i]*rotate_limit])
 if sensor_on == True:
-	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
+	args, ser, zeros, hist = initialize_sensor(com_port_sensor, visualize, read_pts)
 else:
 	p_zero = np.zeros(num_joints)
 	f_zero = np.zeros(num_joints)
 
 # read pressure
-_, pres, force = get_pres()
+_, pres, force, hist = get_pres(hist)
 
 # move fingers together to allow scissors to be mounted
 print('Move fingers to prepare for scissor mounting. Press y to continue or ESC to skip')
@@ -113,12 +113,12 @@ if DXL_on == True:
 			print(i)
 			goal_pos[i] += motor_direction[i]*rotate_right_angle
 		print(goal_pos)
-		mean_pres, max_pres, force = get_pres()
+		_, pres, force, hist = get_pres(hist)
 		goal_pos = move_dxl(goal_pos)
 
 		# spread the two fingers so the scissors won't drop
 		# !!! change to multithread so fingers can move simultaneously?
-		while any(i <= thresh_support_p for i in max_pres[2::]):
+		while any(i <= thresh_support_p for i in pres[2::]):
 			print('press y to move the fingers or press ESC to stop')
 			keypress = getch()
 			if keypress == chr(0x1b):
@@ -126,14 +126,14 @@ if DXL_on == True:
 				break
 			elif keypress == 'y':
 				for i in [1,2]:
-					if max_pres[i] < thresh_support_p:
+					if pres[i] < thresh_support_p:
 						goal_pos[2*i] += motor_direction[2*i]*rotate_support
 						goal_pos[2*i+1] += motor_direction[2*i+1]*gear_ratio*rotate_support
 				goal_pos = move_dxl(goal_pos)
-				_, max_pres, force = get_pres()
+				_, pres, force, hist = get_pres(hist)
 		print('Scissors have been grasped')
 
-mean_pres, max_pres, force = get_pres()
+_, pres, force, hist = get_pres(hist)
 
 while True:
 	if DXL_on == True:
@@ -144,7 +144,7 @@ while True:
 			goal_pos[0] = motor_pos[0] + motor_direction[0]*rotate_open
 			goal_pos[1] = motor_pos[1] + motor_direction[1]*gear_ratio*rotate_open
 			goal_pos = move_dxl(goal_pos)
-			_, max_pres, force = get_pres()
+			_, pres, force, hist = get_pres(hist)
 
 	if UR5_on == True:
 		# move arm forward length of scissor blade
@@ -160,7 +160,7 @@ while True:
 		# close scissors
 		goal_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 		# !!! need to change this programming to also adjust distal joint so it doesn't open when thumb moves
-		while (max_pres[0] < thresh_closed_p) or (force[0] < thresh_closed_f):
+		while (pres[0] < thresh_closed_p) or (force[0] < thresh_closed_f):
 			print('press y to close the scissors or press ESC to stop')
 			keypress = getch()
 			if keypress == chr(0x1b):
@@ -170,7 +170,7 @@ while True:
 				goal_pos[0] += rotate_close_increment
 				goal_pos[1] = goal_pos[1] + motor_direction[1]*gear_ratio*rotate_close_increment
 				goal_pos = move_dxl(goal_pos)
-				_, max_pres, force = get_pres()
+				_, pres, force, hist = get_pres(hist)
 		print('Scissors have been closed')
 
 	if UR5_on == True:
@@ -188,3 +188,11 @@ while True:
 
 if DXL_on == True:
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+
+if sensor_on:
+	print('Press ESC to avoid saving data, or press any other key to save the data')
+	keypress == getch()
+	if keypress == chr(0x1b):
+		print('you did not save the data')
+	else:
+		save_data(hist,"scissor")

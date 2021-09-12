@@ -88,8 +88,8 @@ if UR5_on == True:
 		move_ur5(ground_start_pos)
 
 # initialize sensors
-# if sensor_on == True:
-args, ser, zeros, hist = initialize_sensor(com_port_sensor, visualize, read_pts)
+if sensor_on == True:
+	args, ser, zeros, hist = initialize_sensor(com_port_sensor, visualize, read_pts)
 
 # initialize dynamixel and open fingers
 if DXL_on == True:

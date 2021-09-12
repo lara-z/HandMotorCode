@@ -5,8 +5,8 @@ import numpy as np
 # from utils import *
 from utils_sensor import *
 
-def check_pressure():
-	_, pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
+def check_pressure(hist):
+	_, _, force, _, hist = read_pres(zeros, hist, args, ser, read_pts, print_pres=True)
 	if ((pres >= thresh_tight) or (force >= force_tight)):
 		tightening = False
 		print('detected that screw has been tightened')
@@ -49,7 +49,7 @@ robot = ar.Robot('ur5e', pb=False, use_cam=False)
 # set start position and calibrate the sensor
 robot.arm.set_jpos(start_pos, wait=True)
 time.sleep(1.0)
-args, ser, p_zero, f_zero, x_zero = initialize_sensor(COM_PORT, visualize, read_pts)
+args, ser, zeros, hist = initialize_sensor(com_port_sensor, visualize, read_pts)
 
 # lower to screw
 ee_xyz = [0]*3
@@ -58,7 +58,7 @@ robot.arm.move_ee_xyz(ee_xyz, wait=True)
 time.sleep(1.0)
 goal_pos = robot.arm.get_jpos()
 
-_, pres, _ = read_pres(p_zero, f_zero, args, ser, read_pts)
+_, pres, _, hist = read_pres(zeros, hist, args, ser, read_pts)
 
 # keep tightening screw until tightness is achieved
 while tightening:
@@ -106,7 +106,7 @@ while tightening:
 
 		# read position and pressure
 		goal_pos = robot.arm.get_jpos()
-		_, pres, _ = read_pres(p_zero, f_zero, args, ser, read_pts)
+		_, pres, _, hist = read_pres(zeros, hist, args, ser, read_pts)
 	
 print('The screw has been tightened')
 

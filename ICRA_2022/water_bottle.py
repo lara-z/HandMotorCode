@@ -4,6 +4,7 @@ import time
 # import airobot as ar
 # from airobot import Robot
 import numpy as np
+from numpy.lib.histograms import _hist_bin_sqrt
 from utils import *
 from utils_sensor import *
 
@@ -61,18 +62,18 @@ grasp_thresh_p = 70 # !!! change to real value
 grasp_thresh_f = 200 # !!! change to real value
 bottle_status = '' # options are 'full' or 'empty' once bottle weight is measured
 
-def calc_pres():
+def calc_pres(hist):
 	# read pressure in each finger
 	if sensor_on == True:
 		# 0 is the top finger
-		mean_pres, max_pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
+		mean_pres, max_pres, force, _, hist = read_pres(zeros, hist, args, ser, read_pts, print_pres=True)
 		# pressure[1] -= pressure[0]
 		# pressure[2] -= pressure[0]
 	else:
 		mean_pres = np.zeros(num_fing)
 		max_pres = np.zeros(num_fing)
 		force = np.zeros(num_fing)
-	return mean_pres, max_pres, force
+	return mean_pres, max_pres, force, hist
 
 def move_dxl(dxl_goal):
 	# move motors to goal position
@@ -104,7 +105,7 @@ def adjust(dxl_goal, pressure, thresh):
 			break
 		elif keypress == 'y':
 			move_dxl(dxl_goal)
-			mean_pres, max_pres, force = calc_pres()
+			mean_pres, max_pres, force, hist = calc_pres(hist)
 
 # initialize everything
 if UR5_on == True:
@@ -115,7 +116,7 @@ if DXL_on == True:
 	motor_pos, goal_pos, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN = initialize(motor_ids, com_port_dxl, operating_mode, current_des, current_lim)
 	motor_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 if sensor_on == True:
-	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
+	args, ser, zeros, hist = initialize_sensor(com_port_sensor, visualize, read_pts)
 else:
 	p_zero = np.zeros(num_fing)
 	f_zero = np.zeros(num_fing)
@@ -125,7 +126,7 @@ dxl_limits = [0]*num_fing
 for i in range(num_fing):
 	dxl_limits[i] = sorted([int(motor_pos[i]) - motor_direction[i]*rotate_limit, int(motor_pos[i]) + motor_direction[i]*1.5*rotate_limit])
 
-mean_pres, max_pres, force = calc_pres()
+mean_pres, max_pres, force, hist = calc_pres(hist)
 
 # # open hand to put in bottle
 # for i in range(1,num_fing):
@@ -139,7 +140,7 @@ if sensor_on == True:
 	print('Detecting whether bottle is full or empty. One moment...')
 	data_pts = 20
 	for i in range(data_pts):
-		_, max_pres, _ = calc_pres()
+		_, max_pres, _, _hist = calc_pres(hist)
 		bottle_p += max_pres
 	bottle_p = bottle_p/data_pts
 	if (np.sum(bottle_p[1::] >= full_thresh_p) == 2):
@@ -166,7 +167,7 @@ while (np.sum(max_pres[1::] >= grasp_thresh_p) < 2):
 			if force[i] <= grasp_thresh_f:
 				goal_pos[i] += motor_direction[i]*rotate_amount
 		move_dxl(goal_pos)
-	mean_pres, max_pres, force = calc_pres()
+	mean_pres, max_pres, force, hist = calc_pres(hist)
 grasp_pos = goal_pos.copy() # remember this pose to return bottle to level later
 print('The bottle has been grasped')
 
