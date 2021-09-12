@@ -120,6 +120,7 @@ if sensor_on == True:
 else:
 	p_zero = np.zeros(num_fing)
 	f_zero = np.zeros(num_fing)
+	hist = 0
 
 # set joint limits
 dxl_limits = [0]*num_fing
