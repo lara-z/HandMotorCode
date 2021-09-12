@@ -65,8 +65,9 @@ def initialize_sensor(sensor_port, visualize, read_pts):
         x = np.zeros(len(read_pts.x_start))
 
     class hist:
-        force = np.zeros(len(read_pts.x_start))
-        max_press = np.zeros(len(read_pts.x_start))
+        force = np.zeros(1+len(read_pts.x_start))
+        max_press = np.zeros(1+len(read_pts.x_start))
+        st_time = time.time()
 
     # get initial pressure reading to calibrate sensor value
     zeros.p, _, zeros.f, zeros.x, hist = read_pres(zeros, hist, args, ser, read_pts, initializing=True)
@@ -87,10 +88,10 @@ def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=F
         max_count = 15
         print('')
         print('Zeroing sensor readings. One moment...')
+        hist.st_time = time.time()
     else:
         max_count = 1
 
-    st_time = time.time()
     count = 0
     while count < max_count:
         # take the average reading for during duration of time t_data
@@ -146,11 +147,19 @@ def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=F
         plt.gcf().clear()
 
     if args.store:
-        hist.force = np.vstack([hist.force,force])
-        hist.max_press = np.vstack([hist.max_press,max_press])
+        # the leftmost column is the time stamp, remaining columns are readings
+        del_time = time.time() - hist.st_time
+        hist.force = np.vstack([hist.force,np.insert(force,0,del_time)])
+        hist.max_press = np.vstack([hist.max_press,np.insert(max_press,0,del_time)])
 
     if print_pres == True:
         print('mean pressure', mean_press, 'max.pressure : ' ,max_press, ', force: ', force)
         # print("Time elapsed:", time.time() - st_time)
 
     return mean_press, max_press, force, x_avg, hist
+
+def save_data(hist,task):
+    now = time.strftime("%H%M%S", time.localtime())
+    np.savetxt("data/"+task+"_hist_force_"+now+".csv",hist.force,delimiter=",")
+    np.savetxt("data/"+task+"_hist_pres_"+now+".csv",hist.max_press,delimiter=",")
+    print("The data from this run has been saved")

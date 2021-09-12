@@ -1,17 +1,17 @@
 import time
-import airobot as ar
-from airobot import Robot
+# import airobot as ar
+# from airobot import Robot
 import numpy as np
 from utils import *
 from utils_sensor import *
 
-UR5_on = True
+UR5_on = False
 DXL_on = True
 sensor_on = True
 
 # check port using:    dmesg
-com_port_dxl = '/dev/ttyUSB1' # '/dev/ttyUSB0'
-com_port_sensor = '/dev/ttyUSB0'
+com_port_dxl = '/dev/ttyUSB0' # '/dev/ttyUSB0'
+com_port_sensor = '/dev/ttyUSB1'
 
 # establish UR5 variables
 egg_pos = 'ground' # options are 'holder' or 'ground'
@@ -56,9 +56,9 @@ f_thresh = 25
 
 # !!! change to multithread so fingers can move simultaneously?
 
-def get_pres():
-	mean_pres, max_pres, force, _ = read_pres(p_zero, f_zero, x_zero, args, ser, read_pts, print_pres=True)
-	return mean_pres, max_pres, force
+def get_pres(hist):
+	mean_pres, max_pres, force, _, hist = read_pres(zeros, hist, args, ser, read_pts, print_pres=True)
+	return mean_pres, max_pres, force, hist
 
 def move_dxl(dxl_goal):
 	_ = move(motor_ids, dxl_goal, packetHandler, portHandler, groupBulkWrite, groupBulkRead, ADDR, LEN, print_currvolt=False, limits = dxl_limits)
@@ -88,8 +88,8 @@ if UR5_on == True:
 		move_ur5(ground_start_pos)
 
 # initialize sensors
-if sensor_on == True:
-	args, ser, p_zero, f_zero, x_zero = initialize_sensor(com_port_sensor, visualize, read_pts)
+# if sensor_on == True:
+args, ser, zeros, hist = initialize_sensor(com_port_sensor, visualize, read_pts)
 
 # initialize dynamixel and open fingers
 if DXL_on == True:
@@ -114,7 +114,7 @@ if UR5_on == True:
 
 # read pressures
 if sensor_on == True:
-	_, pres, force = get_pres()
+	_, pres, force, hist = get_pres(hist)
 else:
 	pres = np.zeros(num_fing)
 
@@ -141,7 +141,7 @@ if DXL_on == True:
 				print(diff)
 				move_dxl(goal_pos)
 				# read pressures
-				_, pres, force = get_pres()
+				_, pres, force, hist = get_pres(hist)
 
 		print('Finished grasping')
 
@@ -193,3 +193,5 @@ if DXL_on:
 	# move fingers back to start position
 	move_dxl(motor_pos)
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
+
+save_data(hist,"egg")
