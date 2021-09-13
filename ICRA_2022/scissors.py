@@ -44,10 +44,10 @@ dxl_limits = [0]*len(motor_ids)
 visualize = False
 num_joints = len(motor_ids)
 thresh_support_p = 80 # 40 # ensure that two side fingers are spread enough not to drop scissors
-thresh_closed_p = 150 # pressure required to say scissors are fully closed
+thresh_closed_p = 80 # pressure required to say scissors are fully closed
 thresh_closed_f = 150 # force required to say scissors are fully closed
 class read_pts:
-	# order: palmar thumb, dorsal thumb, palmar pointer, palmar middle finger
+	# order: palmar thumb, dorsal thumb, pointer, middle finger
     x_start = [4,6,2,0]
     x_end   = [6,8,4,2]
     y_start = [8,8,4,0]
@@ -63,7 +63,7 @@ def get_pres(hist):
 		mean_pres = np.zeros(num_joints)
 		pres = np.zeros(num_joints)
 		force = np.zeros(num_joints)
-	return mean_pres, pres, force
+	return mean_pres, pres, force, hist
 
 def move_dxl(dxl_goal):
 	# convenient handle to move motors
@@ -108,11 +108,8 @@ if DXL_on == True:
 	keypress = getch()
 	if keypress == 'y':
 		# close distal joints
-		print(goal_pos)
 		for i in range(1,len(goal_pos),2):
-			print(i)
 			goal_pos[i] += motor_direction[i]*rotate_right_angle
-		print(goal_pos)
 		_, pres, force, hist = get_pres(hist)
 		goal_pos = move_dxl(goal_pos)
 
