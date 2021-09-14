@@ -47,7 +47,7 @@ thresh_support_p = 80 # 40 # ensure that two side fingers are spread enough not 
 thresh_closed_p = 80 # pressure required to say scissors are fully closed
 thresh_closed_f = 150 # force required to say scissors are fully closed
 class read_pts:
-	# order: palmar thumb, dorsal thumb, pointer, middle finger
+	# order: dorsal thumb, palmar thumb, pointer, middle finger
     x_start = [4,6,2,0]
     x_end   = [6,8,4,2]
     y_start = [8,8,4,0]
@@ -148,7 +148,7 @@ while True:
 		goal_ee = [0]*3
 		goal_ee[cut_direction_index] += scissor_blade_length
 		print('Move arm forward tp prepare for cut')
-		print('Press y to continue')
+		print('Press y on other computer to continue')
 		keypress = getch()
 		if keypress == 'y':
 			robot.arm.move_ee_xyz(goal_ee, wait=True)
@@ -157,7 +157,7 @@ while True:
 		# close scissors
 		goal_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 		# !!! need to change this programming to also adjust distal joint so it doesn't open when thumb moves
-		while (pres[0] < thresh_closed_p) or (force[0] < thresh_closed_f):
+		while (pres[1] < thresh_closed_p) or (force[1] < thresh_closed_f):
 			print('press y to close the scissors or press ESC to stop')
 			keypress = getch()
 			if keypress == chr(0x1b):
@@ -183,13 +183,13 @@ while True:
 		print('Escaped from grasping')
 		break
 
+if sensor_on:
+	# print('Press ESC to avoid saving data, or press any other key to save the data')
+	# keypress == getch()
+	# if keypress == chr(0x1b):
+	# 	print('you did not save the data')
+	# else:
+	save_data(hist,"purple_scissor")
+
 if DXL_on == True:
 	shut_down(motor_ids, packetHandler, portHandler, groupBulkRead, ADDR, LEN, askAction=False)
-
-if sensor_on:
-	print('Press ESC to avoid saving data, or press any other key to save the data')
-	keypress == getch()
-	if keypress == chr(0x1b):
-		print('you did not save the data')
-	else:
-		save_data(hist,"scissor")
