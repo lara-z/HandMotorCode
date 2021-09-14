@@ -34,7 +34,7 @@ motor_ids = [12,13,14]
 motor_direction = [-1, 1, -1]
 adduct_ind = 1
 rotate_amount = 30
-rotate_pour = 150
+rotate_pour = 300
 rotate_adduct = 150
 rotate_limit = 1000
 rotate_open = 200
@@ -178,17 +178,17 @@ if bottle_status == 'full':
 	# pour water
 	print('pouring water')
 	goal_pos[0] -= motor_direction[0]*rotate_adduct # move top finger left
-	goal_pos[1] += 0.5*motor_direction[1]*rotate_pour # move right finger down
-	goal_pos[2] -= motor_direction[1]*rotate_pour # move left finger up
+	goal_pos[1] -= motor_direction[1]*rotate_pour # move right finger down
+	goal_pos[2] += motor_direction[2]*rotate_pour # move left finger up
 	# goal_pos[2] -= 1.75*motor_direction[2]*rotate_pour # move left finger down
 	move_dxl(goal_pos)
 	time.sleep(3.0)
 	print('poured water')
 
 	# return bottle back to level
-	goal_pos[0] += 1.5*motor_direction[0]*rotate_adduct # move top finger left
-	goal_pos[1] -= 0.5*motor_direction[1]*rotate_pour # move right finger up
-	goal_pos[2] += 1.5*motor_direction[1]*rotate_pour # move left finger down
+	goal_pos[0] += 1.25*motor_direction[0]*rotate_adduct # move top finger left
+	goal_pos[1] += 1.25*motor_direction[1]*rotate_pour # move right finger up
+	goal_pos[2] -= 1.25*motor_direction[2]*rotate_pour # move left finger down
 	# goal_pos[2] += 1.8*1.75*motor_direction[2]*rotate_pour # move left finger down
 	move_dxl(goal_pos)
 	time.sleep(1.0)

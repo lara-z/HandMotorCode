@@ -3,11 +3,11 @@ import numpy as np
 import time
 
 class read_pts:
-	# order: palmar thumb, dorsal thumb, palmar pointer, palmar middle finger
-    x_start = [4,6,2,0]
-    x_end   = [6,8,4,2]
-    y_start = [8,8,4,0]
-    y_end   = [12,12,8,4]
+	# order: abduction/adduction finger, right finger, left finger
+    x_start = [10,0,20]
+    x_end   = [22,12,32]
+    y_start = [3,0,6]
+    y_end   = [6,3,9]
 visualize = True
 
 args, ser, zeros, hist = initialize_sensor('/dev/ttyUSB1', visualize, read_pts)
