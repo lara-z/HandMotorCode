@@ -17,8 +17,8 @@ cutting = True
 
 # check port using:    python -m serial.tools.list_ports
 # ls /dev/ttyUSB*
-com_port_dxl = '/dev/ttyUSB0'
-com_port_sensor = '/dev/ttyUSB1'
+com_port_dxl = '/dev/ttyUSB1'
+com_port_sensor = '/dev/ttyUSB0'
 
 # establish UR5 variables
 start_ur5 = [1.5286102294921875, -2.384364744225973, -1.4049272537231445, -0.9217203420451661, 0.04831552505493164, 0.6629600524902344]
@@ -41,10 +41,10 @@ rotate_limit = 600
 dxl_limits = [0]*len(motor_ids)
 
 # establish sensor variables
-visualize = False
+visualize = True
 num_joints = len(motor_ids)
-thresh_support_p = 80 # 40 # ensure that two side fingers are spread enough not to drop scissors
-thresh_closed_p = 80 # pressure required to say scissors are fully closed
+thresh_support_p = 40 # 40 # ensure that two side fingers are spread enough not to drop scissors
+thresh_closed_p = 40 # pressure required to say scissors are fully closed
 thresh_closed_f = 150 # force required to say scissors are fully closed
 class read_pts:
 	# order: dorsal thumb, palmar thumb, pointer, middle finger
@@ -90,17 +90,17 @@ _, pres, force, hist = get_pres(hist)
 
 # move fingers together to allow scissors to be mounted
 print('Move fingers to prepare for scissor mounting. Press y to continue or ESC to skip')
-keypress = getch()
-if keypress == chr(0x1b):
-	print('Escaped from moving')
-elif keypress == 'y':
+# keypress = getch()
+# if keypress == chr(0x1b):
+# 	print('Escaped from moving')
+# elif keypress == 'y':
 	# goal_pos[0] += motor_direction[0]*rotate_open
 	# goal_pos[1] += motor_direction[1]*gear_ratio*rotate_close_rapid
-	goal_pos[2] += motor_direction[2]*rotate_close_rapid
-	goal_pos[3] += motor_direction[3]*gear_ratio*rotate_close_rapid
-	goal_pos[4] += motor_direction[4]*rotate_close_rapid
-	goal_pos[5] += motor_direction[5]*gear_ratio*rotate_close_rapid
-	goal_pos = move_dxl(goal_pos)
+goal_pos[2] += motor_direction[2]*rotate_close_rapid
+goal_pos[3] += motor_direction[3]*gear_ratio*rotate_close_rapid
+goal_pos[4] += motor_direction[4]*rotate_close_rapid
+goal_pos[5] += motor_direction[5]*gear_ratio*rotate_close_rapid
+goal_pos = move_dxl(goal_pos)
 
 if DXL_on == True:
 	# mount scissors
@@ -132,16 +132,18 @@ if DXL_on == True:
 
 _, pres, force, hist = get_pres(hist)
 
+
+if DXL_on == True:
+	# open scissors
+	print('press y to open the scissors')
+	keypress = getch()
+	if keypress == 'y':
+		goal_pos[0] = motor_pos[0] + motor_direction[0]*rotate_open
+		goal_pos[1] = motor_pos[1] + motor_direction[1]*gear_ratio*rotate_open
+		goal_pos = move_dxl(goal_pos)
+		_, pres, force, hist = get_pres(hist)
+
 while True:
-	if DXL_on == True:
-		# open scissors
-		print('press y to open the scissors')
-		keypress = getch()
-		if keypress == 'y':
-			goal_pos[0] = motor_pos[0] + motor_direction[0]*rotate_open
-			goal_pos[1] = motor_pos[1] + motor_direction[1]*gear_ratio*rotate_open
-			goal_pos = move_dxl(goal_pos)
-			_, pres, force, hist = get_pres(hist)
 
 	if UR5_on == True:
 		# move arm forward length of scissor blade
@@ -157,18 +159,34 @@ while True:
 		# close scissors
 		goal_pos = dxl_read(motor_ids, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
 		# !!! need to change this programming to also adjust distal joint so it doesn't open when thumb moves
-		while (pres[1] < thresh_closed_p) or (force[1] < thresh_closed_f):
-			print('press y to close the scissors or press ESC to stop')
-			keypress = getch()
-			if keypress == chr(0x1b):
-				print('Escaped from grasping')
-				break
-			elif keypress == 'y':
+		
+		print('press y to close the scissors or press ESC to stop')
+		keypress = getch()
+		if keypress == chr(0x1b):
+			print('Escaped from grasping')
+			break
+		elif keypress == 'y':
+			while (pres[1] < thresh_closed_p): #  or (force[1] < thresh_closed_f)
+				# print('press y to close the scissors or press ESC to stop')
+				# keypress = getch()
+				# if keypress == chr(0x1b):
+				# 	print('Escaped from grasping')
+				# 	break
+				# elif keypress == 'y':
 				goal_pos[0] += rotate_close_increment
 				goal_pos[1] = goal_pos[1] + motor_direction[1]*gear_ratio*rotate_close_increment
 				goal_pos = move_dxl(goal_pos)
 				_, pres, force, hist = get_pres(hist)
-		print('Scissors have been closed')
+			print('Scissors have been closed')
+			
+		# open scissors
+		# print('press y to open the scissors')
+		# keypress = getch()
+		# if keypress == 'y':
+		goal_pos[0] = motor_pos[0] + motor_direction[0]*rotate_open
+		goal_pos[1] = motor_pos[1] + motor_direction[1]*gear_ratio*rotate_open
+		goal_pos = move_dxl(goal_pos)
+		_, pres, force, hist = get_pres(hist)
 
 	if UR5_on == True:
 		# move arm back to starting position
