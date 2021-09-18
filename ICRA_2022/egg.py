@@ -11,7 +11,7 @@ sensor_on = True
 
 # check port using:    dmesg
 com_port_dxl = '/dev/ttyUSB1' # '/dev/ttyUSB0'
-com_port_sensor = '/dev/ttyUSB2'
+com_port_sensor = '/dev/ttyUSB0'
 
 # establish UR5 variables
 egg_pos = 'ground' # options are 'holder' or 'ground'
@@ -78,6 +78,13 @@ def move_ur5(ur5_goal,sleep=True):
 		robot.arm.set_jpos(ur5_goal, wait=True)
 	if sleep == True:
 		time.sleep(1.5)
+
+def collect_pres(dt, hist, message):
+	t_start = time.time()
+	while (time.time() - t_start) < dt:
+		_,_,_,hist = get_pres(hist)
+	print(message)
+	return hist
 
 # UR5 arm go to start position
 if UR5_on == True:
@@ -166,12 +173,18 @@ if UR5_on == True:
 	move_ur5(lifted_pos)
 	# move arm down
 	robot.arm.move_ee_xyz(ee_xyz)
-
-t_start = time.time()
-t_now = time.time()
-while (t_now - t_start) < 38:
-	_, pres, force, hist = get_pres(hist)
+else:
+	t_start = time.time()
 	t_now = time.time()
+	print("STart lisfting hand to horizontal position")
+	hist = collect_pres(5, hist, "Hand arrives at horizontal. Start shaking")
+	hist = collect_pres(4, hist, "Finish shaking. Start rotating hand")
+	hist = collect_pres(4, hist, "Finish rotating. Start shaking hand")
+	hist = collect_pres(3, hist, "Finish shaking. Start rotating hand")
+	hist = collect_pres(4, hist, "Finish rotating. Start shaking hand")
+	hist = collect_pres(4, hist, "Finish shaking. Start putting hand down")
+	hist = collect_pres(7, hist, "Hand is hovering over table. Will release egg in 3 seconds")
+	hist = collect_pres(3, hist, "")
 
 # release egg
 print('Fingers will release egg')
