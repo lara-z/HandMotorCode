@@ -299,7 +299,7 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 	moving = True
 	while moving:
 		if print_currvolt == True:
-			print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+			print_curr_volt(DXL_IDS,portHandler, packetHandler, ADDR)
 
         # get present position
 		dxl_present_position = dxl_read(DXL_IDS, packetHandler, groupBulkRead, ADDR.PRO_PRESENT_POSITION, LEN.PRO_PRESENT_POSITION)
@@ -323,7 +323,7 @@ def move(DXL_IDS, goal_position, packetHandler, portHandler, groupBulkWrite, gro
 		
 
 	if print_currvolt == True:
-		print_curr_volt(DXL_IDS,0, portHandler, packetHandler, groupBulkRead, ADDR, LEN)
+		print_curr_volt(DXL_IDS, portHandler, packetHandler, ADDR)
 
 	return dxl_present_position
 
@@ -414,7 +414,7 @@ def dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR_read, ADDR):
 
 	return dxl_present_read
 
-def print_curr_volt(DXL_IDS, print_motor_ind, portHandler, packetHandler, groupBulkRead, ADDR, LEN):
+def print_curr_volt(DXL_IDS, portHandler, packetHandler, ADDR):
 	cur_lim = np.around(curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_CURRENT_LIMIT, ADDR)),2)
 	cur_pres = np.around(curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_PRESENT_CURRENT, ADDR)),2)
 	cur_goal = np.around(curr2amps(dxl_get_elec(DXL_IDS, portHandler, packetHandler, ADDR.PRO_GOAL_CURRENT, ADDR)),2)
