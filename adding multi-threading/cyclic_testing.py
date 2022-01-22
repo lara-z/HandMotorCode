@@ -19,21 +19,50 @@
 ################################################################################
 
 
+import numpy as np
 from functions import *
+import time
+import threading
+import queue
 
-com_num = '/dev/ttyUSB1'
-# com_num = '/dev/ttyUS0'
+com_num = '/dev/ttyUSB0'
 
 # comment out one of the lines below to change operating mode
 operating_mode = 'current_position' # current-based position control
 # operating_mode = 'extended_position'
 
 # specify current goal and limit if using current-based position control
-current_limit = amps2curr(2.0) # input the number of amps and it will convert to motor units
-current_goal = amps2curr(1.8) # input the goal number of amps
+current_limit = amps2curr(1.2) # input the number of amps and it will convert to motor units
+current_goal = amps2curr(1.0) # input the goal number of amps
 
-motor_id = [int(input('What is the ID of the motor you would like to control?  '))]
+# inputs = input('What is the ID of the motor you would like to control?  ').split(", ")
+# motor_id = [int(id) for id in inputs]
+motor_id = [6, 2, 5, 8]
+
+DXL_JOINT_NUM = [1, -1, 2, -2]
+JOINT_TORQUE = [0.25, 0.2]
+TORQUE_MARGIN = 0.01
+joint_ratios = [1, 1, 1]
+
 ROTATE_AMOUNT = deg2pulse(5) # the increment in degrees (converted to motor pulse units) you would like the motor to move
+
+def cycle():
+    start_time = time.time()
+    count = 0
+    while q.empty():
+        move_pair(1, -350, motor_id, DXL_JOINT_NUM, joint_ratios, JOINT_TORQUE, SYS, ADDR, LEN)
+        time.sleep(0.1)
+        move_pair(1, 350, motor_id, DXL_JOINT_NUM, joint_ratios, JOINT_TORQUE, SYS, ADDR, LEN)
+        count += 1
+        if count % 20 == 0:
+            text = 'Cycles: ' + str(count)
+            print(text, end="\r")
+        if count % 20 == 0:
+            print('')
+            tension_seq(motor_id, DXL_JOINT_NUM, JOINT_TORQUE, SYS, ADDR, LEN)
+    elapsed_time = time.time() - start_time
+    duration = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+    print('Duration:  '+str(duration)+', '+str(count)+' cycles')
 
 if operating_mode == 'extended_position':
     dxl_start_position, dxl_goal_position, SYS, ADDR, LEN = initialize(motor_id, com_num, operating_mode)
@@ -42,33 +71,22 @@ elif operating_mode == 'current_position':
 else:
     print('invalid operating mode')
 
-print('current position: ', dxl_start_position)
-print('Press "w" to wind the motor, "u" to unwind the motor, or ESC to exit')
+q = queue.Queue()
+x = threading.Thread(target=cycle)
 
-while 1:
-    # get command from keypress
+tension_seq(motor_id, DXL_JOINT_NUM, JOINT_TORQUE, SYS, ADDR, LEN)
+time.sleep(2)
+
+print('Starting run')
+print('press y to move the finger or press ESC to stop')
+x.start()
+
+while True:
     keypress = getch()
     if keypress == chr(0x1b):
+        q.put('stop!')
+        x.join()
+        print('This run has been stopped')
         break
-    elif keypress == 'w':
-        direction = 1
-    elif keypress == 'u':
-        direction = -1
-    else:
-        print('invalid keypress')
-        direction = 0
-
-    dxl_goal_position = dxl_read_pos(motor_id, SYS, ADDR, LEN)
-    # write new goal position
-    dxl_goal_position[0] += direction*ROTATE_AMOUNT
-
-    # move motor
-    dxl_present_position = move(motor_id, dxl_goal_position, SYS, ADDR, LEN, print_currvolt=True)
-
-    # print current and voltage readings
-    # print_curr_volt(motor_id, 0, SYS, ADDR, LEN)
-    print(dxl_read_pos(motor_id, SYS, ADDR, LEN))
-    print('Moved. Press "w" to wind the motor, "u" to unwind the motor, or ESC to exit')
-    print('')
 
 shut_down(motor_id, SYS, ADDR, LEN, askAction=False)
