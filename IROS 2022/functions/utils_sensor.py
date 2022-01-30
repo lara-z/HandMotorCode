@@ -13,9 +13,6 @@ def getData(args, ser, length=None):
     if length is None:
         input_string = ser.readline()
         input_string = input_string.decode('utf-8')
-        # print(input_string)
-        # print(input_string.rstrip('\n'))
-        # return input_string.rstrip('\n')
         return 'w'
     else:
         input_string = ser.read(length)
@@ -89,7 +86,7 @@ def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=F
 
     # take an average reading over time to calibrate zero pressure when initializing
     if initializing == True:
-        max_count = 6
+        max_count = 10
         print('')
         print('Zeroing sensor readings. One moment...')
         print('Progress: |', '-'*10, '|', sep = '', end='\r')
@@ -121,12 +118,11 @@ def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=F
                 max_press[i] += np.max(x[i] - zeros.x[i])
                 force[i] += np.sum(x[i] - zeros.x[i])
                 x_avg[i] += (x[i] - zeros.x[i])
-        
         count += 1
 
         if initializing == True:
             # for some reason, the sensor readings are unusually low if read without this pause
-            time.sleep(0.15)
+            time.sleep(1.3)
             # print progress update
             interval = round(max_count/10)
             if count % interval == 0:
@@ -153,7 +149,7 @@ def read_pres(zeros, hist, args, ser, read_pts, print_pres=False, initializing=F
     if ((args.vis==True) and (initializing==False)):
         plt.imshow(vis_data) # 0:13,0:9
         plt.colorbar()
-        plt.clim(0, 10)
+        plt.clim(0, 8)
         plt.draw()
         plt.pause(1e-7)
         plt.gcf().clear()
@@ -189,45 +185,55 @@ def collect_pres(com_port_sensor, visualize, read_pts, folder_name, task_name, p
     def get_pres_hist(hist):
         run = True
         while run:
-            if finished.is_set():
+            if events.finished.is_set():
                 # check finished event
                 run = False
             _, _, _, _, hist = read_pres(zeros, hist, args, ser, read_pts, print_pres)
-            
+            # print(hist.force[-1,0], flush=True)
             # add time series of sensor history to queue in case it needs to be referenced from main thread	
             q_sens.put(hist)
         
-        if ifSave.is_set():
+        if events.ifSave.is_set():
             # save sensor data if ifSave event is True
             save_data(q_sens.get(),folder_name,task_name)
 
     def waiting():
-        print('Press ''s'' to stop pressure readings.')
-        print('Press ''d'' to discard the pressure readings. The sensor will continue to read data, but the data will not be saved.')
+        print('Press ''s'' to stop pressure readings')
+        print('Press ''p'' to print the lastest pressure reading')
+        print('Press ''d'' to discard the pressure readings. The sensor will continue to read data, but the data will not be saved')
         print('*************************\n\n\n')
-        while finished.is_set() == False:
+        while events.finished.is_set() == False:
             # keep checking for s to be pressed
             keypress = getch()
             if keypress == 's':
                 # when s is pressed, put True in queue to stop sensor thread
                 # stop reading sensor values
-                finished.set()
+                events.finished.set()
                 break
+            if keypress == 'p':
+                count = 0
+                while count < 7:
+                    max_pres, _ = pres_from_q(q_sens)
+                    print(max_pres, end='\r')
+                    count += 1
             if keypress == 'd':
                 # when d is pressed, set ifSave to False to prevent data from being saved
                 # use this option if a run has gone bad
-                ifSave.clear()
-                print(ifSave.is_set())
+                events.ifSave.clear()
+                print(events.ifSave.is_set())
                 print('******The data from this run will not be saved******\n\n')
        
         # now that sensors have been stopped, end sensor thread
         th_sens.join()
+        print('', end='\r')
         print('Sensors have been turned off')
 	
     # create an event that is set to True if pressure reading should be stopped
-    finished = threading.Event()
-    ifSave = threading.Event()
-    ifSave.set()
+    class events:
+        finished = threading.Event()
+        ifSave = threading.Event()
+    
+    events.ifSave.set()
 
     # start queue and separate thread for collecting pressure data
     q_sens = queue.LifoQueue()
@@ -238,17 +244,20 @@ def collect_pres(com_port_sensor, visualize, read_pts, folder_name, task_name, p
     th_wait = threading.Thread(target=waiting)
     th_wait.start()
 
-    return th_wait, q_sens, finished
+    return th_wait, q_sens, events
 
-def end_sens(th_wait, finished):
-    if finished.is_set() == False:
+def end_sens(th_wait, events, save):
+    if save == False:
+        # don't save the data
+        events.ifSave.clear()
+
+    if events.finished.is_set() == False:
         # set event to True, simulate keypress to end pressure sensing
         # this is because I don't know how to otherwise clear the getch in waiting()
         # finished.set()
         keyboard = Controller()
         keyboard.press('s')
         keyboard.release('s')
-        print('If an error has been produced here due to system incompatibility, press ''s'' to end sensor readings')
 
     # close thread waiting for keypress
     th_wait.join()

@@ -2,6 +2,7 @@ import os
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 import numpy as np
 from .conversions import *
+from .misc import *
 
 def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=500, CURRENT_LIMIT=1193):
 	# operating_mode accepts two inputs: current_position, extended_position
@@ -237,24 +238,6 @@ def read_curr_volt(DXL_IDS, ifprint, SYS, ADDR):
 		print('cur_psnt: ', cur_pres, 'A,  cur_goal: ', cur_goal, ', pwm_psnt:', pwm_pres, '%, vlt_inpt: ', volt_pres, 'V')
 
 	return cur_pres, pwm_pres, volt_pres
-
-def getch():
-	# get keyboard stroke based on mac or windows operating system
-	import os
-
-	if os.name == 'nt':
-		import msvcrt
-		return msvcrt.getch().decode()
-	else:
-		import sys, tty, termios
-		fd = sys.stdin.fileno()
-		old_settings = termios.tcgetattr(fd)
-		try:
-			tty.setraw(sys.stdin.fileno())
-			ch = sys.stdin.read(1)
-		finally:
-			termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-		return ch
 
 def check4TxRxerror(DXL_ID, SYS, ADDR, dxl_comm_result, dxl_error):
 	if dxl_comm_result != COMM_SUCCESS:

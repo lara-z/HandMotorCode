@@ -48,6 +48,30 @@ def move(DXL_IDS, goal_position, SYS, ADDR, LEN, wait_finish=True, print_currvol
 
 	return dxl_present_position, cur_pres, pwm_pres, volt_pres
 
+def move_pair(rotate_amount, this_joint_num, dxl_info, SYS, ADDR, LEN):
+	# move a pair of agonist and antagonist cables in a joint
+	# cables for more distal joints also get moved so that more distal part of finger maintains position and appears unaffected by proximal joint movement
+
+	dxl_present_position = dxl_read_pos(dxl_info.ids, SYS, ADDR, LEN)
+	dxl_goal_position = dxl_present_position.copy()
+
+	# calculate new goal positions
+	for i in range(0,len(dxl_info.ids)):
+		if abs(dxl_info.joint_num[i]) >= this_joint_num:
+			if (abs(dxl_info.joint_num[i]) - this_joint_num) % 2 == 1:
+				comp_dir = -1
+			else:
+				comp_dir = 1
+			dxl_goal_position[i] += np.sign(dxl_info.joint_num[i])*comp_dir*rotate_amount
+
+	# finger
+	dxl_present_position = move(dxl_info.ids, dxl_goal_position, SYS, ADDR, LEN)
+
+	# retension finger
+	# dxl_present_position= tension_seq(dxl_info, SYS, ADDR, LEN)
+
+	return dxl_present_position
+
 def tension(DXL_IDS, torque_des, SYS, ADDR, LEN):
     # used in open loop tendon drive
 	# keep moving the finger to the desired torque until the desired torque is achieved
@@ -103,41 +127,35 @@ def tension(DXL_IDS, torque_des, SYS, ADDR, LEN):
 	
 	return dxl_present_position, dxl_goal_position
 
-def move_pair(joint_num, rotate_amount, DXL_IDS, DXL_JOINT_NUM, joint_ratios, JOINT_TORQUE, SYS, ADDR, LEN):
-	# move a pair of agonist and antagonist cables in a joint
-	# cables for more distal joints also get moved so that more distal part of finger maintains position and appears unaffected by proximal joint movement
-
-	dxl_present_position = dxl_read_pos(DXL_IDS, SYS, ADDR, LEN)
-	dxl_goal_position = dxl_present_position.copy()
-
-	# calculate new goal positions
-	for i in range(0,len(DXL_IDS)):
-		if abs(DXL_JOINT_NUM[i]) >= joint_num:
-			if (abs(DXL_JOINT_NUM[i]) - joint_num) % 2 == 1:
-				comp_dir = -1
-			else:
-				comp_dir = 1
-			dxl_goal_position[i] += np.sign(DXL_JOINT_NUM[i])*comp_dir*rotate_amount
-
-	# finger
-	dxl_present_position = move(DXL_IDS, dxl_goal_position, SYS, ADDR, LEN)
-
-	# retension finger
-	# dxl_present_position= tension_seq(DXL_IDS, DXL_JOINT_NUM, JOINT_TORQUE, SYS, ADDR, LEN)
-
-	return dxl_present_position
-
-def tension_seq(DXL_IDS, DXL_JOINT_NUM, JOINT_TORQUE, SYS, ADDR, LEN):
+def tension_seq(dxl_info, SYS, ADDR, LEN):
 	# sequentially joints of each finger from most proximal to most distal
 
-	for joint in np.unique(np.absolute(DXL_JOINT_NUM)):
+	for joint in np.unique(np.absolute(dxl_info.joint_num)):
 		# find the motors ids corresponding to this joint number
-		joint_dxl = np.array(DXL_IDS)[np.where(np.absolute(DXL_JOINT_NUM) == joint)[0]]
-		torque_des = JOINT_TORQUE[joint-1]
+		joint_dxl = np.array(dxl_info.ids)[np.where(np.absolute(dxl_info.joint_num) == joint)[0]]
+		torque_des = dxl_info.joint_torque[joint-1]
 		# tension all cables corresponding to this joint number
 		tension(joint_dxl, torque_des, SYS, ADDR, LEN)
 
-	dxl_present_position = dxl_read_pos(DXL_IDS, SYS, ADDR, LEN)
+	dxl_present_position = dxl_read_pos(dxl_info.ids, SYS, ADDR, LEN)
 	print('Finished tensioning all joints')
 	print('')
 	return dxl_present_position
+
+def new_goal_pos_comp(new_rel_goal, dxl_info, dxl_pres_position):
+	# calculate new goal positions
+	# compensate more distal joints for movement in proximal joints so that distal joints don't change relative angle from proximal joint
+	# rotate amount: a list of positions relative to current position. numpy array is 1xnumber-of-joints, and first element in list corresponds to most proximal joint.
+	dxl_goal_position = dxl_pres_position.copy()
+
+	for this_joint_num in range(1,len(new_rel_goal)+1):
+		rotate_amount = new_rel_goal[i]
+		for i in range(0,len(dxl_info.ids)):
+			if abs(dxl_info.joint_num[i]) >= this_joint_num:
+				if (abs(dxl_info.joint_num[i]) - this_joint_num) % 2 == 1:
+					comp_dir = -1
+				else:
+					comp_dir = 1
+				dxl_goal_position[i] += np.sign(dxl_info.joint_num[i])*comp_dir*rotate_amount
+
+	return dxl_goal_position
