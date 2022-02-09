@@ -269,6 +269,7 @@ def end_sens(th_wait, events, save):
         print('Remaining threads: ', threading.enumerate())
 
 def pres_from_q(q_sens):
+    # read sensor readings from queue q_sens
     hist = q_sens.get()
     force = hist.force[-1,1:]
     max_pres = hist.max_press[-1,1:]

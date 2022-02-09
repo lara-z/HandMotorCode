@@ -4,45 +4,6 @@ import numpy as np
 from .conversions import *
 from .misc import *
 
-"""
-	DXL_IDS
-	format: list
-	what: id numbers of each motor
-	established: input from user
-"""
-"""
-	com_num
-	format: string
-	what: usb port that dynamixel motors are plugged into
-	established: input from user
-"""
-"""
-	operating mode
-	format: string
-	what: indicates desired operating mode of dynamixel motors
-	options: 'extended_position', 'current_position'
-	established: input from user
-"""
-"""
-	SYS
-	format: class
-	what: low-level functions to communicate with dynamixel motors
-	contains functions: portHandler, packetHandler, groupSyncWrite, groupBulkRead
-	established: in utils_motor/initialize()
-"""
-"""
-	ADDR
-	format: class
-	what: dynamixel control table addresses, see initialize()
-	established: in utils_motor/initialize()
-"""
-"""
-	LEN
-	format: class
-	what: integer byte lengths corresponding to dynamixel control table addresses, see initialize()
-	established: in utils_motor/initialize()
-"""
-
 def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=500, CURRENT_LIMIT=1193):
 	# initialize motors
 	# returns dxl_present_position, dxl_goal_position, SYS, ADDR, LEN
