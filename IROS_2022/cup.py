@@ -6,7 +6,7 @@ from functions import *
 
 # set whether cup is grasped from inside or outside
 # options: 'inside', 'outside'
-task = 'outside'
+task = 'inside'
 
 # toggle between 'manual' and 'automatic' to control tasks
 mode = 'manual'
@@ -26,6 +26,20 @@ TORQUE_MARGIN = 0.01
 operating_mode = 'current_position' # current-based position control
 current_limit = amps2curr(1.2) # input the number of amps and it will convert to motor units
 current_goal = amps2curr(1.0) # input the goal number of amps
+incr_amt = deg2pulse(5)
+if task == 'outside':
+    # open fingers
+    start_amt = deg2pulse(10)
+    start_goal = -np.array([2*start_amt,-start_amt]) # movement relative to straight-finger start position
+    grasp = np.array([incr_amt, 0.5*incr_amt])
+elif task == 'inside':
+    # close fingers
+    start_amt = deg2pulse(15)
+    start_goal = -np.array([-start_amt, 1.3*start_amt]) # movement relative to straight-finger start position
+    grasp = -np.array([incr_amt, 0.5*incr_amt])
+else:
+    print('Invalid task. Valid tasks are ''outside'' or ''inside''')
+    quit()
 
 # set sensor variables
 com_port_sensor = '/dev/ttyUSB1'
@@ -49,11 +63,11 @@ def get_pres(pres_des = 0):
     return reading
 
 # set arm variables
-inside_goal = [] # movement relative to straight-finger start position
-outside_goal = [] # movement relative to straight-finger start position
+# !!!
 
 # turn on arm, move to goal position
 # !!!
+print('Arm moves to starting position\n')
 
 # turn on motors, tension finger sequentially
 if dxl_on:
@@ -61,30 +75,25 @@ if dxl_on:
     _, dxl_goal_position, SYS, ADDR, LEN = initialize(dxl_info.ids, com_port_dxl, operating_mode, current_goal, current_limit)
 
     # tension fingers
-    print('press ''c'' at any time to stop tensioning and continue')
     while True:
-        print('press ''y'' to start tensioning the first finger or any other key to skip')
+        # !!! adapt to two fingers
+        print('press ''y'' to start tensioning the first finger, ''c'' to continue, or any other key to skip')
         keypress = getch()
         if keypress == 'c':
             break
         elif keypress == 'y':
-            tension_seq(dxl_info, SYS, ADDR, LEN)
+            dxl_goal_position = tension_seq(dxl_info, SYS, ADDR, LEN)
             
-        print('press ''y'' to start tensioning the second finger or any other key to skip')
+        print('press ''y'' to start tensioning the second finger, ''c'' to continue, or any other key to skip')
         keypress = getch()
         if keypress == 'c':
             break
         elif keypress == 'y':
-            tension_seq(dxl_info, SYS, ADDR, LEN)
+            dxl_goal_position = tension_seq(dxl_info, SYS, ADDR, LEN)
 
     # move fingers to start position
-    if task == 'outside':
-        # open fingers
-        dxl_start = new_goal_pos_comp(outside_goal, dxl_info, dxl_goal_position)
-
-    else:
-        # close fingers
-        dxl_start = new_goal_pos_comp(inside_goal, dxl_info, dxl_goal_position)
+    dxl_present_position, dxl_goal_position = move_rel(dxl_info, start_goal, dxl_goal_position, SYS, ADDR, LEN)
+    dxl_start = dxl_present_position.copy()
 
 # start collecting sensor data
 if sensor_on:
@@ -92,41 +101,41 @@ if sensor_on:
 
 # move arm to cup
 # !!!
+print('Move arm to cup\n')
 
 # grasp fingers around cup
 if dxl_on:
+    print('Start grasping fingers around cup')
     pres = get_pres(0.5*grasp_thresh)
     run = True
     # while pressure is less than threshold, keep grasping
     while (pres < grasp_thresh) and (run == True):
-        #!!! add new relative goal
         #!!! adapt to two fingers
-        new_rel_goal = []
-        dxl_goal_position = new_goal_pos_comp(new_rel_goal, dxl_info, dxl_goal_position)
-        dxl_present_position = move(dxl_info.ids, dxl_goal_position, SYS, ADDR, LEN, True)
+        dxl_present_position, dxl_goal_position = move_rel(dxl_info, grasp, dxl_present_position, SYS, ADDR, LEN)
 
         # get sensor reading
         pres = get_pres(0.5*grasp_thresh)
 
         # in manual mode, keypress will allow loop to continue or be prematurely ended
         run = toggle_control(mode)
+    print('Finished grasping cup\n')
 
 # lift cup to demonstrate successful grasp, put it back down
-#!!!
+# !!!
+print('Arm lifts cup\n')
 
 # release hold on cup
 if dxl_on:
     if sensor_on:
+        print('Start releasing fingers from cup')
         # while pressure is above release threshold, keep releasing. Once released, move fingers slightly more open
         pres = get_pres(2*release_thresh)
         run = True
         # while pressure is less than threshold, keep grasping
         while (pres > release_thresh) and (run == True):
             #!!! add new relative goal
-            #!!! adapt to two fingers
-            new_rel_goal = []
-            dxl_goal_position = new_goal_pos_comp(new_rel_goal, dxl_info, dxl_goal_position)
-            dxl_present_position = move(dxl_info.ids, dxl_goal_position, SYS, ADDR, LEN, True)
+            #!!! adapt to two fingers=
+            dxl_present_position, dxl_goal_position = move_rel(dxl_info, -grasp, dxl_present_position, SYS, ADDR, LEN)
 
             # get sensor reading
             pres = get_pres(2*release_thresh)
@@ -135,13 +144,18 @@ if dxl_on:
             run = toggle_control(mode)
     else:
         # hard coded movement to release cup
-        dxl_present_position = move(dxl_info.ids, dxl_start, SYS, ADDR, LEN, True)
+        print('Move fingers back to start position?')
+        if toggle_control(mode) == True:
+            dxl_present_position, _, _, _ = move_abs(dxl_info.ids, dxl_start, SYS, ADDR, LEN)
+        print('')
+
 
 # move arm back to start position
 # !!!
+print('Arm moves back away from cup\n')
 
 # turn everything off
-time.sleep(1)
+time.sleep(2)
 if sensor_on:
     # stop collecting sensor data
     end_sens(th_wait, events, save_data)

@@ -5,7 +5,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from pynput.keyboard import Key, Controller
-from misc import *
+from .misc import *
 
 def getData(args, ser, length=None):
     dimx, dimy = args.dimx, args.dimy

@@ -1,4 +1,3 @@
-import numpy as np
 def deg2pulse(deg):
     # converts from degrees of joint displacement to motor pulses
     ratio = 1

@@ -4,7 +4,48 @@ import numpy as np
 from .conversions import *
 from .misc import *
 
+"""
+	DXL_IDS
+	format: list
+	what: id numbers of each motor
+	established: input from user
+"""
+"""
+	com_num
+	format: string
+	what: usb port that dynamixel motors are plugged into
+	established: input from user
+"""
+"""
+	operating mode
+	format: string
+	what: indicates desired operating mode of dynamixel motors
+	options: 'extended_position', 'current_position'
+	established: input from user
+"""
+"""
+	SYS
+	format: class
+	what: low-level functions to communicate with dynamixel motors
+	contains functions: portHandler, packetHandler, groupSyncWrite, groupBulkRead
+	established: in utils_motor/initialize()
+"""
+"""
+	ADDR
+	format: class
+	what: dynamixel control table addresses, see initialize()
+	established: in utils_motor/initialize()
+"""
+"""
+	LEN
+	format: class
+	what: integer byte lengths corresponding to dynamixel control table addresses, see initialize()
+	established: in utils_motor/initialize()
+"""
+
 def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=500, CURRENT_LIMIT=1193):
+	# initialize motors
+	# returns dxl_present_position, dxl_goal_position, SYS, ADDR, LEN
 	# operating_mode accepts two inputs: current_position, extended_position
 
 	os.sys.path.append('../dynamixel_functions_py')             # Path setting
@@ -138,6 +179,9 @@ def initialize(DXL_IDS, com_num, operating_mode, DESIRED_CURRENT=500, CURRENT_LI
 	return dxl_present_position, dxl_goal_position, SYS, ADDR, LEN
 
 def shut_down(DXL_IDS, SYS, ADDR, LEN, askAction=True):
+	# shut down all motors
+	# returns nothing
+
 	TORQUE_DISABLE = 0                 # Value for disabling the torque
 
 	# Clear bulkread parameter storage
@@ -161,11 +205,16 @@ def shut_down(DXL_IDS, SYS, ADDR, LEN, askAction=True):
 	SYS.portHandler.closePort()
 
 def reboot(SYS, DXL_IDS):
+	# reboots all motors
+	# returns nothing
+
 	for id in DXL_IDS:
 		SYS.packetHandler.reboot(SYS.portHandler,id)
 
 def calc_torque(DXL_IDS, ifprint, SYS, ADDR):
 	# calculate the torque based on measured current
+	# returns torque, dxl_present_current
+	# ifprint: True/False, determines if function prints torque and current in the command line
 	dxl_present_current = curr2amps(dxl_get_elec(DXL_IDS, SYS, ADDR.PRO_PRESENT_CURRENT, ADDR))
 	torque = current2torque(dxl_present_current)
 
@@ -177,6 +226,7 @@ def calc_torque(DXL_IDS, ifprint, SYS, ADDR):
 
 def dxl_read_pos(DXL_IDS, SYS, ADDR, LEN):
 	# read value motor present position
+	# returns position values as numpy array corresponding to motors in DXL_IDS
 
 	# Syncread present values
 	dxl_comm_result = SYS.groupBulkRead.txRxPacket()
@@ -200,6 +250,7 @@ def dxl_get_elec(DXL_IDS, SYS, ADDR_read, ADDR):
 	# read current and voltage values
 	# current, voltage, and pwm are 2 bytes and require function below
 	# special function to read two's complement because the way the current values are stored
+	# ADDR_read: the specific control table address to be read
 	present_value = [0]*len(DXL_IDS) # created as a list because it will store strings of binary numbers
 	dxl_present_read = np.zeros(len(DXL_IDS))
 	for i in range(len(DXL_IDS)):
@@ -226,6 +277,9 @@ def dxl_get_elec(DXL_IDS, SYS, ADDR_read, ADDR):
 
 def read_curr_volt(DXL_IDS, ifprint, SYS, ADDR):
 	# print current, voltage, pwm present limit and goal values
+	# returns cur_pres, pwm_pres, volt_pres
+	# ifprint: True/False, determines if function prints current, pwm, volts in the command line
+
 	cur_lim = np.around(curr2amps(dxl_get_elec(DXL_IDS, SYS, ADDR.PRO_CURRENT_LIMIT, ADDR)),2)
 	cur_pres = np.around(curr2amps(dxl_get_elec(DXL_IDS, SYS, ADDR.PRO_PRESENT_CURRENT, ADDR)),2)
 	cur_goal = np.around(curr2amps(dxl_get_elec(DXL_IDS, SYS, ADDR.PRO_GOAL_CURRENT, ADDR)),2)
@@ -240,6 +294,11 @@ def read_curr_volt(DXL_IDS, ifprint, SYS, ADDR):
 	return cur_pres, pwm_pres, volt_pres
 
 def check4TxRxerror(DXL_ID, SYS, ADDR, dxl_comm_result, dxl_error):
+	# used to check for error after calling SYS.packetHandler.write#ByteTxRx functions (for any byte length #)
+	# dxl_comm_result, dxl_error outputted from SYS.packetHandler.write#ByteTxRx
+	# see initialize() for example of use
+	# returns 0 (failure) or 1 (success)
+
 	if dxl_comm_result != COMM_SUCCESS:
 		print("ID%d %s" % (DXL_ID, SYS.packetHandler.getTxRxResult(dxl_comm_result)))
 		return 0

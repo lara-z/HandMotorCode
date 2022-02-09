@@ -1,11 +1,7 @@
 import os
-from dynamixel_sdk import *                    # Uses Dynamixel SDK library
-import numpy as np
-from .conversions import *
 
 def getch():
 	# get keyboard stroke based on mac or windows operating system
-	import os
 
 	if os.name == 'nt':
 		import msvcrt
@@ -28,6 +24,7 @@ def toggle_control(mode):
 	# inteded to help catch motion errors before disasters happen
 	run = False
 	if mode == 'manual':
+		print('Press ''y'' to continue or ESC to skip')
 		keypress = getch()
 		if keypress == chr(0x1b):
 			print('Escaped from grasping')
